@@ -25,7 +25,7 @@ metareport(
 
 \item{output_format}{sstring, ee output_format in render, default as html, which has interactivity with plotly support}
 
-\item{output_dir}{string, see output_dir in render, default value as NULL, the same path of the rmarkdown input}
+\item{output_dir}{string, see output_dir in render, default value as NULL, the working directory}
 
 \item{output_file}{string, the name of the output file, default for html document is output.html}
 }
@@ -36,40 +36,6 @@ no direct return value, but write an output.html to the temp session on the open
 This metareport function provides a way of generating the report on an R server with provided templates, and return the report from a browser or using API. It works as well on the user end as a stand-alone mode.
 }
 \examples{
-
-metareport(type = "summary",
-          data_file = system.file("extdata/HGM/final_summary.tsv", package = "metareport"),
-          meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-          output_dir =  getwd(), 
-          output_file = "report_summary.html")
-          
-          
-metareport(type = "peptide",
-    data_file = system.file("extdata/HGM/final_peptides.tsv",package = "metareport"),
-    meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-    output_dir =  getwd(), 
-    output_file = "report_peptide.html")    
-    
-           
-metareport(type = "protein",
-    data_file = "extdata/HGM/final_proteins.tsv",
-    meta_file = "extdata/HGM/meta_info.tsv",
-    output_dir =  getwd(), 
-    output_file = "report_protein.html")                   
-                         
-metareport(type = "taxon",
-    data_file = system.file("extdata/HGM/Taxa.tsv", package = "metareport"),
-    meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-    output_dir =  getwd(), 
-    output_file = "report_taxon.html")                                        
-
-
-metareport(type = "function",
-    data_file = system.file("extdata/HGM/functions_report.tsv", package = "metareport"),
-    meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-    output_dir =  getwd(), 
-    output_file = "report_function.html")
-
 
 
 }

@@ -17,40 +17,6 @@
 #' @seealso \code{\link{render}}
 #' @examples
 #'
-#' metareport(type = "summary",
-#'           data_file = system.file("extdata/HGM/final_summary.tsv", package = "metareport"),
-#'           meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-#'           output_dir =  getwd(), 
-#'           output_file = "report_summary.html")
-#'           
-#'           
-#' metareport(type = "peptide",
-#'     data_file = system.file("extdata/HGM/final_peptides.tsv",package = "metareport"),
-#'     meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-#'     output_dir =  getwd(), 
-#'     output_file = "report_peptide.html")    
-#'     
-#'            
-#' metareport(type = "protein",
-#'     data_file = system.file("extdata/HGM/final_proteins.tsv", package = "metareport")
-#'     meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-#'     output_dir =  getwd(), 
-#'     output_file = "report_protein.html")                   
-#'                          
-#' metareport(type = "taxon",
-#'     data_file = system.file("extdata/HGM/Taxa.tsv", package = "metareport"),
-#'     meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-#'     output_dir =  getwd(), 
-#'     output_file = "report_taxon.html")                                        
-#'
-#'
-#' metareport(type = "function",
-#'     data_file = system.file("extdata/HGM/functions_report.tsv", package = "metareport"),
-#'     meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
-#'     output_dir =  getwd(), 
-#'     output_file = "report_function.html")
-#'
-#'
 #'
 #' @export
 #'

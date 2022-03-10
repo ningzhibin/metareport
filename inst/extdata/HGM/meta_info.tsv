@@ -1,0 +1,14 @@
+Raw file	Experiment	meta1	meta2
+F01_Fraction1	F01_Fraction1	group1	control
+F01_Fraction2	F01_Fraction2	group1	control
+F01_Fraction3	F01_Fraction3	group1	control
+F01_Fraction4	F01_Fraction4	group1	control
+F02_FractionCyto	F02_FractionCyto	group2	control
+F02_FractionEnv	F02_FractionEnv	group2	control
+F04	F04	group2	treamtment
+F05	F05	group2	treamtment
+F06	F06	group2	treamtment
+F07_Fraction1	F07_Fraction1	group7	treamtment
+F07_Fraction2	F07_Fraction2	group7	treamtment
+F07_Fraction3	F07_Fraction3	group7	treamtment
+F07_Fraction4	F07_Fraction4	group7	treamtment
