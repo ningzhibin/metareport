@@ -6,12 +6,6 @@
 .git
 .Rhistory
 
-run_test.r
-template_test_oldway.Rmd
-
-report_output.html
-
-inst/extdata/debug
-inst/rmd/archived
+inst/run_test_for_development.R
 
 
