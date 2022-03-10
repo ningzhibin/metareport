@@ -1,0 +1,51 @@
+<!-- input: This script only follows the child_PCA  -->
+
+
+##  `r section_title ` {.tabset .tabset-fade }
+
+### 2D plot
+
+```{r echo =FALSE, fig.width= 8,fig.height=6, error=TRUE}
+#factoextra::fviz_pca_ind(PCA_result, habillage=meta_table[,i],
+#     addEllipses=FALSE, ellipse.level=0.95, palette = "Dark2", repel = TRUE )
+
+factoextra::fviz_pca_ind(PCA_result, habillage=meta_table[,i],
+     addEllipses=TRUE, ellipse.level=0.95, palette = "Dark2", repel = TRUE )
+
+```
+
+
+### 3D plot
+
+```{r echo =FALSE, fig.width= 8,fig.height=6, error=TRUE}
+    loading <- as.data.frame(PCA_result$x)
+
+    if(params$if_html){
+
+     plot_ly(loading, x = ~PC1, y = ~PC2, z = ~PC3, color = meta_table[,i], colors = "Dark2") %>%
+        add_markers() %>%
+        add_text(text = row.names(loading)) %>%
+        layout(scene = list(xaxis = list(title = 'PC1'),
+                            yaxis = list(title = 'PC2'),
+                            zaxis = list(title = 'PC3')))
+
+    }
+
+
+```
+
+
+### All PC pairs
+
+```{r echo =FALSE, fig.width= 8,fig.height=8, error=TRUE}
+
+grouping_color <- brewer.pal(n = 8, name = "Dark2")[unclass(as.factor(meta_table[,i]))]
+
+pairs(loading,upper.panel = NULL, pch = 19, col = grouping_color)
+par(xpd=TRUE)
+legend("topright", as.vector(unique(meta_table[,i])),  
+       fill= unique(grouping_color), border = unique(grouping_color), bty = "n" )
+
+
+```
+

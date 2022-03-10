@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+packrat/lib*/
+.Rhistory
+inst/run_test_for_development.R
+*.html
+inst/extdata/
+inst/rmd/archived/*
+
+
+

@@ -1,0 +1,465 @@
+---
+title: "Function Annotation"
+author: "Suggestions to imetalabca@gmail.com"
+date: "Report generated @`r Sys.time()`"
+always_allow_html: TRUE
+output:
+  html_document:
+    fig_caption: yes
+    fig_width: 10
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  pdf_document:
+    highlight: tango
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+params:
+  data_table: !r NULL
+  meta_table: !r NULL
+  external_message: !NULL
+  if_html: TRUE # if you want to pdf or word export, set this as FALSE
+
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+
+```{r, changelog, echo=FALSE}
+
+# todo
+# check the metafile, if meta is not qualified, skip it
+
+# Change log:
+# 20220207 adapted to HGM function format
+# 20220205 external message delved to the report
+# 20210805 Added upset plot for every meta information
+# 20210804 (1) Added percent stacked bar plots
+#          (2) Added all meta information (meta1-5) in pheatmaps
+# 20210803 (1) changed COG category calculation to duplicated sum of all categories as Xu suggested
+#             previously 3% proteins had multiple COG assignments. This will not have a significant impact
+#          (2) Added more functional information in summary 
+# 20210610 changed pie chart into Voronoi plot
+# 20190904 added heatmap and PCA, can show meta info if provided
+# 20190821 created function rmd
+
+
+# Function.csv/tsv is a protein based function annotation file, 
+# Essentially, 
+# essential columns:
+# 
+# Group_ID
+# Name
+# Peptide count
+# Unique peptide count
+# E value
+# Taxonomy Id
+# Taxonomy name
+# Preferred name
+# Gene_Ontology_id
+# Gene_Ontology_name
+# Gene_Ontology_namespace
+# EC_id
+# KEGG_ko
+# KEGG_Pathway
+# KEGG_Module
+# KEGG_Reaction
+# KEGG_rclass
+# BRITE
+# KEGG_TC
+# CAZy
+# BiGG_Reaction
+# COG accession
+# COG category
+# COG name
+# NOG accession
+# NOG category
+# NOG name
+
+## quantification columns starting with "Intensity"
+# Intensity experiment_A
+# Intensity experinent_B
+
+```
+
+
+```{r setup, echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE}
+htmltools::img(src = system.file("rmd/iMetaReport.png", package = "metareport"),
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
+
+# global setup
+# use error = TRUE to continue rendor withou errors, to make sure there is output
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(pheatmap)
+library(reshape2)
+library(vegan)
+library(ggdendro)
+library(readr)
+library(voronoiTreemap)
+library(curl)
+library(UpSetR)
+library(dplyr)
+library(rmetalab)
+# library(gridExtra)
+
+# load color codes for voronoi plot
+
+# color_code <- data.frame(COG_cat =  c("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","S","T","U","Y","Z","R","Unmatched"),
+                         # color  = c("#990F0F","#B22C2C","#CC5151","#E57E7E","#FFB2B2","#99540F","#B26F2C","#CC8E51","#E5B17E","#FFD8B2",
+                         #            "#6B990F","#85B22C","#A3CC51","#C3E57E","#E5FFB2","#0F6B99","#2C85B2","#51A3CC","#7EC3E5","#B2E5FF",
+                         #            "#260F99","#422CB2","#6551CC","#8F7EE5"))
+
+color_code <- data.frame(COG_cat = LETTERS,
+                          color =  generate_colors(26))
+```
+
+
+```{r import_data}
+# import data
+data_table <- params$data_table
+meta_table <- params$meta_table
+
+data_table <- distinct(data_table, Group_ID, .keep_all = TRUE)
+
+# pre- process the data_table 
+experiment <- find_experiment_names(data_table)
+
+experiment_names <- experiment$experiment_names
+data_table <- experiment$data_table
+intensity_columns <- data_table[,experiment$experiment_index, drop = FALSE]
+
+
+# check meta_table
+if( is.null(meta_table)){ 
+  meta_info <- "* **No meta information provided**"
+  
+}else if (any(is.na(meta_table))){ 
+  
+  meta_info <-  "* **The meta information provided has missing values, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+  
+}else if(!identical(sort(toupper(experiment_names)),sort(toupper(meta_table[,2])))){
+  meta_info <-  "* **The experiment setting in meta table provided do not match the experiment in the data_table, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+
+}else{
+  meta_table <- meta_table[,-1] # remove the raw files column, not needed in this report
+  meta_table <- meta_table[match(toupper(experiment_names),toupper(meta_table[,1])),] # ensure the order is the same is the column names
+  meta_info <- NULL
+  # numerate all meta info
+  for(i in 2: ncol(meta_table)){
+     meta_info <-   paste0(meta_info, "* **Grouping ",i-1,": **" , paste0(unique(meta_table[,i]), collapse="; "), "<br>  \n\n" )  
+  }
+}
+
+
+```
+
+
+```{r error, results='asis'}
+# use this as a template for conditional multi-line in-line code
+if(!is.null(params$external_message)){
+  cat("# Something went wrong\n")
+  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
+  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  cat(params$external_message)
+} 
+
+```
+
+
+# Intro
+
+**This report provides some basic description and visualization of the MetaLab function results. **
+
+**Users can use this to quickly check the functional profile of the input data set.**
+
+
+# Sample overview
+
+Protein groups annotation | Number (percentage)
+--------------------- | -----------------------
+Protein groups in your sample | `r nrow(data_table)`
+Protein groups with COG annotation: | `r paste(nrow(data_table[data_table$COG.accession != "",]),"(",paste0(round(100*nrow(data_table[data_table$COG.accession != "",])/nrow(data_table)),"%"),")")`
+Unique COG accessions annotated: | `r length(unique(data_table$COG.accession))-1`
+Protein groups with NOG annotation: | `r paste(nrow(data_table[data_table$NOG.accession != "",]),"(",paste0(round(100*nrow(data_table[data_table$NOG.accession != "",])/nrow(data_table)),"%"),")")`
+Unique NOG accessions annotated: | `r length(unique(data_table$NOG.accession))-1`
+Protein groups with KEGG ko annotation:  | `r paste(nrow(data_table[data_table$KEGG_ko != "",]),"(",paste0(round(100*nrow(data_table[data_table$KEGG_ko != "",])/nrow(data_table)),"%"),")")`
+Protein groups with GO annotation: | `r   paste(nrow(data_table[data_table$Gene_Ontology_id != "",]),"(",paste0(round(100*nrow(data_table[data_table$Gene_Ontology_id != "",])/nrow(data_table)),"%"),")")`
+Protein groups with EC annotation:  | `r paste(nrow(data_table[data_table$EC_id != "",]),"(",paste0(round(100*nrow(data_table[data_table$EC_id != "",])/nrow(data_table)),"%"),")")`
+Protein groups with CAZy annotation:  | `r paste(nrow(data_table[data_table$CAZy != "",]),"(",paste0(round(100*nrow(data_table[data_table$CAZy != "",])/nrow(data_table)),"%"),")")`
+
+`r meta_info` 
+
+
+# Overview with voronoi plots {.tabset .tabset-fade }
+
+<details>
+
+  <summary>About this plot</summary>
+  
+  * COG: Clusters of Orthologous Genes
+  * More about [COG](https://www.ncbi.nlm.nih.gov/research/cog-project/)
+  * The eggNOG database is a database of biological information hosted by the EMBL. It is based on the original idea of COGs (clusters of orthologous groups) and expands that idea to non-supervised orthologous groups constructed from numerous organisms.[4] The database was created in 2007[5] and updated to version 4.5 in 2015.[1] eggNOG stands for evolutionary genealogy of genes: Non-supervised Orthologous Groups. More about [NOG](http://eggnog5.embl.de/#/app/home)
+  * Areas is based on the total intensity across samples
+  * Graph is by [voronoiTreemap](https://cran.r-project.org/web/packages/voronoiTreemap/index.html)
+  
+</details>
+
+## COG categories
+
+```{r COG_voronoi, echo=FALSE,fig.width= 10, fig.height=5}
+
+# data.frame with 2 columns,  1st as COG or NOG category and weight column (intensity quantity)
+plot_COG_voronoi <- function(df){
+  # for consistency, use predefined colors
+  color_code <- data.frame(cat = LETTERS, color =  generate_colors(26))
+  #df_COG_category <- COG_categry()
+  # the data.frame is required to  6 columns named sequentially as c("h1", "h2", "h3", "color", "weight", "codes")
+  df_formated <- data.frame(h1 = "Total",
+                            #h2 = df_COG_category$name[match(df[,1], df_COG_category$categry)],
+                            h2 = df[,1],
+                            h3 = df[,1],
+                            color = color_code$color[match(df[,1], color_code$cat)],
+                            weight = as.numeric(df[,2]),
+                            codes = df[,1])
+                #codes = color_code$color[match(df[,1], color_code$cat)])
+  
+  df_formated_jason <- vt_export_json(vt_input_from_df(df_formated, scaleToPerc = TRUE))
+  vt_d3(df_formated_jason, legend=TRUE, legend_title = "NOG categories", size_border_hover = "5px", size_border = "2px", color_border = "#ffffff", seed=200)
+}
+
+
+
+# Separating COG ids and sum up 
+data_table_COG <- cbind(COG.category = data_table$COG.category, intensity_columns) %>% 
+                  tidytext::unnest_tokens(., COG.category, COG.category, token = "characters", to_lower  = FALSE) %>% 
+                  aggregate(.~ COG.category, data = ., FUN = sum)
+  
+
+data_table_COG_sum <- data.frame( h2 = data_table_COG[, 1],
+                       weight = rowSums(data_table_COG[,2:ncol(data_table_COG)]))
+
+plot_COG_voronoi(data_table_COG_sum)
+
+
+```
+
+## eggNOG categories
+
+
+```{r NOG_voronoi, echo=FALSE,fig.width= 10, fig.height=5}
+
+data_table_NOG <- cbind(NOG.category = data_table$NOG.category, intensity_columns) %>% 
+                  tidytext::unnest_tokens(., NOG.category, NOG.category, token = "characters", to_lower  = FALSE) %>% 
+                  aggregate(.~ NOG.category, data = ., FUN = sum)
+
+data_table_NOG_sum <- data.frame( h2 = data_table_NOG[, 1],
+                       weight = rowSums(data_table_NOG[,2:ncol(data_table_NOG)]))
+
+plot_COG_voronoi(data_table_NOG_sum)
+
+
+```
+
+# Overview with composition bar plots {.tabset .tabset-fade }
+
+<details>
+
+  <summary>About this plot</summary>
+  * COG = Clusters of Orthologous Genes
+  * Composition calculation is on the category level, based on the total intensity, or intensity normalized to 1
+  * More about [COG](https://www.ncbi.nlm.nih.gov/research/cog-project/), [NOG](http://eggnog5.embl.de/#/app/home)
+
+</details>
+
+
+## COG
+
+### Raw 
+
+```{r COG, echo=FALSE,fig.width= 10, fig.height=5}
+
+# Prepare data for plotting
+data_table_COG_melt <- melt(data = data_table_COG,id.vars = c("COG.category"), variable.name = "Sample", value.name = "Intensity")
+#Draw stacked column bar
+ggplotly(ggplot(data_table_COG_melt, aes(x = Sample, y = Intensity, fill = COG.category)) +
+         geom_bar(stat='identity') + theme_bw() +
+         ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+) %>% style(legendgroup = NULL)
+
+```
+
+### Normalized
+
+
+```{r COG_rel, echo=FALSE,fig.width= 10, fig.height=5}
+
+#Draw stacked column bar
+ggplotly(ggplot(data_table_COG_melt, aes(x = Sample, y = Intensity, fill = COG.category)) +
+          geom_col(position = "fill") + theme_bw() +
+         ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+) %>% style(legendgroup = NULL)
+
+```
+
+## NOG
+
+
+### Raw
+```{r NOG, echo=FALSE,fig.width= 10, fig.height=5}
+# Prepare data for plotting  
+
+# colnames(data_table_NOG)[colnames(data_table_NOG)=="intensity_columns_N$NOG_cat"] <- "Name"
+# data_table_NOG_gg <- melt(data = data_table_NOG,id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+
+data_table_NOG_melt <- melt(data = data_table_NOG,id.vars = c("NOG.category"), variable.name = "Sample", value.name = "Intensity")
+
+
+#Draw stacked column bar
+ggplotly(ggplot(data_table_NOG_melt, aes(x = Sample, y = Intensity, fill = NOG.category)) +
+         geom_bar(stat='identity') + theme_bw() +
+         ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+### Normalized
+
+```{r NOG_rel, echo=FALSE,fig.width= 10, fig.height=5}
+
+#Draw stacked column bar
+ggplotly(ggplot(data_table_NOG_melt, aes(x = Sample, y = Intensity, fill = NOG.category)) +
+         geom_col(position = "fill") +  theme_bw() +
+         ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+
+# Clustering of COGs {.tabset .tabset-fade }
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+
+# df_intensity <- data_table_COG %>% column_to_rownames(var = "COG.category")
+
+data_table_COG_acc<- data.frame(COG.accession = data_table$COG.accession, data_table[,experiment$experiment_index]) %>% 
+   aggregate(.~ COG.accession, data = ., FUN = sum) %>% 
+  column_to_rownames(var = "COG.accession")
+
+df_intensity <- data_table_COG_acc
+
+
+
+if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  cat(res, sep = '\n')
+}else{
+  cat("There is only one column/experiment, no heatmap needed!")
+}
+
+
+if(length(experiment_names) > 3){
+  
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  cat(res, sep = '\n')
+  
+  # for extra plot with grouping information
+  if(!is.null(meta_table)){
+    for(i in 2: ncol(meta_table)){ 
+       section_title <- paste0("PCA with Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
+       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       cat(res, sep = '\n')
+   }
+  }
+  
+}
+
+```
+
+
+# Clustering of NOGs {.tabset .tabset-fade }
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+
+#df_intensity <- data_table_NOG %>% column_to_rownames(var = "NOG.category")
+data_table_NOG_acc<- data.frame(NOG.accession = data_table$NOG.accession, data_table[,experiment$experiment_index]) %>% 
+   aggregate(.~ NOG.accession, data = ., FUN = sum) %>% 
+  column_to_rownames(var = "NOG.accession")
+
+df_intensity <- data_table_NOG_acc
+
+if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  cat(res, sep = '\n')
+}else{
+  cat("There is only one column/experiment, no heatmap needed!")
+}
+
+if(length(experiment_names) > 3){
+  
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  cat(res, sep = '\n')
+  
+  # for extra plot with grouping information
+  if(!is.null(meta_table)){
+    for(i in 2: ncol(meta_table)){ 
+       section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
+       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       cat(res, sep = '\n')
+   }
+  }
+  
+}
+
+
+```
+
+
+
+# Binary comparsion  {.tabset .tabset-fade }
+
+## COGs {.tabset .tabset-fade }
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=6}
+
+plot_list <- report_plot_upsetR(df_intensity = data_table_COG_acc, meta_table = meta_table)
+
+for(plot in names(plot_list)){
+  cat(paste0("### ", plot,  "\n"))
+  #print(htmltools::tagList(plot_list[[plot]]))
+  print(plot_list[[plot]])
+  cat("\n\n")
+}
+
+```
+
+## NOGs {.tabset .tabset-fade }
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=6}
+
+plot_list <- report_plot_upsetR(df_intensity = data_table_NOG_acc, meta_table = meta_table)
+
+for(plot in names(plot_list)){
+  cat(paste0("### ", plot,  "\n"))
+  #print(htmltools::tagList(plot_list[[plot]]))
+  print(plot_list[[plot]])
+  cat("\n\n")
+}
+
+```
+

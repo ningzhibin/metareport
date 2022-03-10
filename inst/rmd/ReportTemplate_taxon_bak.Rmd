@@ -1,0 +1,646 @@
+---
+title: "Taxonomy Quick View"
+author: Suggestions to imetalabca@gmail.com
+date: Report generated @`r Sys.time()`
+always_allow_html: true
+output:
+  html_document:
+    fig_width: 10
+    fig_caption: TRUE
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    number_sections: true
+  pdf_document:
+    toc: true
+    toc_depth: 4
+    highlight: tango
+    number_sections: true
+params:  
+  data_table: !r NULL ### Manditory; main data input for the report
+  meta_table: !r NULL ### Optional; If provided, will do some statistics 
+  external_message: !NULL
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r, changelog, echo=FALSE}
+
+# 20220203 change the input  parameter from input_datatable to data_table, to be unified as the one function
+# 20210804 added percent stacked bar plots
+# 20210608 added Meta information; added downloadable tables
+# 20190819
+
+
+# the input file is tree/lineage file, with all lineage information on different taxon levels, followed by intensity columns across experiments
+# required columns in input file (taxon)
+
+
+  # Name
+  # Rank
+  # Superkingdom
+  # Kingdom
+  # Phylum
+  # Class
+  # Order
+  # Family
+  # Genus
+  # Species
+  # intensity a
+  # intensity b
+
+
+```
+
+
+```{r setup, echo=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE)
+
+# global setup
+# use error = TRUE to continue rendor withou errors, to make sure there is output
+
+
+htmltools::img(src = "https://raw.githubusercontent.com/ningzhibin/rmdocpu/master/inst/rmd/iMetaReport.png", 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:150px;height:150px;')
+
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(readxl)
+library(pheatmap)
+library(reshape2)
+library(vegan)
+library(ggdendro)
+library(gridExtra)
+library(DT)# for interactive data table display 
+
+
+```
+
+
+
+```{r function_needed, echo=FALSE}
+
+# long tables for ggplot and short tables for others
+
+tidy_MQ_taxonomy_long <- function(df_taxonomy.txt){
+  
+    extract_species_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Species', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+    extract_genus_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Genus', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+    extract_family_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Family', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+    extract_order_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Order', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+    extract_class_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Class', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+    extract_phylum_gg <- melt(data = df_taxonomy.txt[df_taxonomy.txt$Rank == 'Phylum', -c(2:10)],               
+                            id.vars = c("Name"), variable.name = "Sample", value.name = "Intensity")
+
+    return(list("extract_species_gg" = extract_species_gg,
+                "extract_genus_gg" = extract_genus_gg,
+                "extract_family_gg" = extract_family_gg,
+                "extract_order_gg" = extract_order_gg,
+                "extract_class_gg" = extract_class_gg,
+                "extract_phylum_gg" = extract_phylum_gg
+    ))
+}
+
+tidy_MQ_taxonomy_short <- function(df_taxonomy.txt){    
+    extract_species <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Species', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+    extract_genus <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Genus', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+    extract_family <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Family', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+    extract_order <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Order', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+    extract_class <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Class', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+    extract_phylum <- df_taxonomy.txt[df_taxonomy.txt$Rank == 'Phylum', -c(2:10)]  %>%  remove_rownames %>% column_to_rownames(var="Name")
+
+    return(list("extract_species" = extract_species,
+                "extract_genus" = extract_genus,
+                "extract_family" = extract_family,
+                "extract_order" = extract_order,
+                "extract_class" = extract_class,
+                "extract_phylum" = extract_phylum
+    ))
+}
+
+```
+
+
+
+```{r file_taxonomy, echo=FALSE, fig.width= 15,fig.height=10}
+
+# input
+# if(is.null(params$data_table)){
+#   # test with local test with local files in the same dir,
+#   #df_taxonomy.txt  <- read_excel("BuiltIn.taxa.refine.csv", sheet = 2)
+#   df_taxonomy.txt <- read.delim("BuiltIn.taxa.refine.csv", header = TRUE,sep = ",",check.names = FALSE, stringsAsFactors = FALSE) 
+# 
+# }else{
+#   # opencpu render from data table by parametrized input
+#   df_taxonomy.txt <- params$data_table
+# }
+
+df_taxonomy.txt <- params$data_table
+
+# Note: The folling analysis with meta info assumes that
+# 1st columns as sample name, 2nd column as experiment name, 3rd column and after as grouping
+
+meta_table <- params$meta_table
+# if there is any null value in the meta colum, set the meta as NULL
+if(any(is.na(meta_table$meta1))){
+  meta_table <- NULL
+}
+
+# generate tidy tables
+summary_file_taxonomy_long <- tidy_MQ_taxonomy_long(df_taxonomy.txt)
+summary_file_taxonomy_short <- tidy_MQ_taxonomy_short(df_taxonomy.txt)
+
+
+```
+
+
+```{r error, results='asis'}
+# use this as a template for conditional multi-line in-line code
+if(!is.null(params$external_message)){
+  cat("# Something went wrong\n")
+  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
+  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  cat(params$external_message)
+} 
+
+```
+
+
+
+# Intro
+
+**This report provides some basic description and visualization of the MetaLab taxonomy results. **
+**The report is based on the MetaLab_taxonomy.xlsx, without defined experimental design/grouping information.**
+**Users can use this to quickly check the taxonomic profile of the dataset at each taxonomic level.**
+**`r params$external_message`**
+
+# Sample overview
+
+*  **Number of samples in your dataset: ** `r ncol(df_taxonomy.txt)-10`
+*  **Number of species identified: ** `r nrow(summary_file_taxonomy_short$extract_species)`
+*  **Number of genera identified: ** `r nrow(summary_file_taxonomy_short$extract_genus)`
+*  **Number of families identified: ** `r nrow(summary_file_taxonomy_short$extract_family)`
+*  **Number of orders identified: ** `r nrow(summary_file_taxonomy_short$extract_order)`
+*  **Number of classes identified: ** `r nrow(summary_file_taxonomy_short$extract_class)`
+*  **Number of phyla identified: ** `r nrow(summary_file_taxonomy_short$extract_phylum)`
+
+# Identification on different levels
+
+```{r identification_fig, echo=FALSE, fig.width= 10, fig.height=5}
+
+j = 1
+plot_id <- list()
+id_number <- list()
+taxa_level <- c("Species", "Genus", "Family", "Order", "Class", "Phylum")
+
+for (i in summary_file_taxonomy_short) {
+       
+       if(is.null(meta_table)){
+         
+       idnumber_level <- function(taxa_level){
+                       idnumber <- specnumber(t(taxa_level))
+                       idnumber <- as.data.frame(idnumber)
+                       idnumber <- as.data.frame(cbind(names = rownames(idnumber), idnumber))
+                       return(idnumber)}
+       id_number[[j]] <- idnumber_level(i)
+
+       }else{
+       
+       idnumber_level <- function(taxa_level){
+                       idnumber <- specnumber(t(taxa_level))
+                       idnumber <- as.data.frame(idnumber)
+                       idnumber <- as.data.frame(cbind(names = rownames(idnumber), Meta = meta_table$meta1, idnumber))
+                       return(idnumber)}
+       id_number[[j]] <- idnumber_level(i)
+       
+       plot_id[[j]] <- ggplotly(ggplot(data=id_number[[j]], aes(x=Meta, y=idnumber) ) + 
+                    geom_jitter(position=position_jitter(width=0.3), alpha=0.9) +
+                    geom_boxplot(alpha = 0.8, show.legend = FALSE, aes(fill=factor(Meta))) + 
+                    scale_fill_brewer(palette="Dark2")+
+                    expand_limits(y = 0) + 
+                    ylab(paste0("ID# at ", taxa_level[j], " level"))+ theme_bw())
+       }
+  j = j+1
+}
+
+
+if(is.null(meta_table)){
+  
+  ID_result_short <-  cbind(Species = id_number[[1]][, ncol(id_number[[1]])],
+                      Genus = id_number[[2]][, ncol(id_number[[1]])],
+                      Family = id_number[[3]][, ncol(id_number[[1]])],
+                      Order = id_number[[4]][, ncol(id_number[[1]])],
+                      Class = id_number[[5]][, ncol(id_number[[1]])],
+                      Phylum = id_number[[6]][, ncol(id_number[[1]])]) 
+  ID_result_long <- melt(ID_result_short)
+  ggplotly(ggplot(ID_result_long, aes(x=Var2, y = value))+
+             geom_boxplot(alpha = 0.8, show.legend = FALSE, aes(fill=factor(Var2))) + 
+             geom_jitter(position=position_jitter(width=0.3), alpha=0.9) +
+             scale_fill_brewer(palette="Dark2")+
+             expand_limits(y = 0) + 
+             ylab("Number of identificaton")+ xlab("Level") + theme_bw()) %>%
+             layout(autosize = F)
+
+}else{
+ subplot(plot_id[[1]], plot_id[[2]], plot_id[[3]], 
+         plot_id[[4]], plot_id[[5]], plot_id[[6]], 
+         nrows = 2, margin=0.04, titleY = TRUE) %>% layout(showlegend = FALSE)
+}
+
+
+
+```
+Result table for download
+```{r identification_data, echo=FALSE,fig.width= 8,fig.height=4, cache = FALSE}
+
+# Generate result tables
+if(is.null(meta_table)){
+ID_result<-  cbind(colnames(summary_file_taxonomy_short$extract_species),
+                   Species = id_number[[1]][, ncol(id_number[[1]])],
+                   Genus = id_number[[2]][, ncol(id_number[[1]])],
+                   Family = id_number[[3]][, ncol(id_number[[1]])],
+                   Order = id_number[[4]][, ncol(id_number[[1]])],
+                   Class = id_number[[5]][, ncol(id_number[[1]])],
+                   Phylum = id_number[[6]][, ncol(id_number[[1]])])  
+
+datatable(ID_result, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+}else{
+ID_result <-  cbind(meta_table,
+                    Species = id_number[[1]][, 3],
+                    Genus = id_number[[2]][, 3],
+                    Family = id_number[[3]][, 3],
+                    Order = id_number[[4]][, 3],
+                    Class = id_number[[5]][, 3],
+                    Phylum = id_number[[6]][, 3])
+
+datatable(ID_result, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+}
+
+```
+
+
+# Alpha diversity
+
+Figure below show the alpha-diversity (Shannon-Wiener index) on each level.
+
+
+```{r alpha_fig, echo=FALSE,fig.width= 10,fig.height=5, cache = FALSE}
+
+j = 1
+plot_diversity <- list()
+diversity_data <- list()
+taxa_level <- c("Species", "Genus", "Family", "Order", "Class", "Phylum")
+
+for (i in summary_file_taxonomy_short) {
+
+       if(is.null(meta_table)){
+       
+       diversity_taxa<- function(taxa_level){
+                          SWD <- round(vegan::diversity(t(taxa_level),index = "shannon"),3)
+                          Alpha_diversity <- as.data.frame(SWD)
+                          Alpha_diversity <- as.data.frame(cbind(names = rownames(Alpha_diversity), Alpha_diversity))
+                          return(Alpha_diversity)
+                        }
+       diversity_data[[j]] <- diversity_taxa(i)
+
+       }else{
+       diversity_taxa<- function(taxa_level){
+                          SWD <- round(vegan::diversity(t(taxa_level),index = "shannon"),3)
+                          Alpha_diversity <- as.data.frame(SWD)
+                          Alpha_diversity <- as.data.frame(cbind(names = rownames(Alpha_diversity),
+                                                                 Meta = meta_table$meta1, Alpha_diversity))
+                          return(Alpha_diversity)
+                        }
+       diversity_data[[j]] <- diversity_taxa(i)
+
+       plot_diversity[[j]] <- ggplotly(ggplot(data=diversity_data[[j]], aes(x=Meta, y=SWD) ) + 
+                    geom_jitter(position=position_jitter(width=0.3), alpha=0.9) +
+                    geom_boxplot(alpha = 0.8, show.legend = FALSE, aes(fill=factor(Meta))) + 
+                    scale_fill_brewer(palette="Dark2")+
+                    expand_limits(y = 0) + 
+                    ylab(paste0(taxa_level[j], " level"))+ theme_bw())
+       }
+  j = j+1
+}
+
+
+if(is.null(meta_table)){
+
+SWD_result_short <- cbind(Species = diversity_data[[1]][, ncol(diversity_data[[1]])],
+                          Genus = diversity_data[[2]][, ncol(diversity_data[[1]])],
+                          Family = diversity_data[[3]][, ncol(diversity_data[[1]])],
+                          Order = diversity_data[[4]][, ncol(diversity_data[[1]])],
+                          Class = diversity_data[[5]][, ncol(diversity_data[[1]])],
+                          Phylum = diversity_data[[6]][, ncol(diversity_data[[1]])])
+SWD_result_long <- melt(SWD_result_short)
+ggplotly(ggplot(SWD_result_long, aes(x=Var2, y = value))+
+             geom_boxplot(alpha = 0.8, show.legend = FALSE, aes(fill=factor(Var2))) + 
+             geom_jitter(position=position_jitter(width=0.3), alpha=0.9) +
+             scale_fill_brewer(palette="Dark2")+
+             expand_limits(y = 0) + 
+             ylab("Number of identificaton")+ xlab("Level") + theme_bw()) %>%
+             layout(autosize = F)
+
+  
+}else{
+ subplot(plot_diversity[[1]], plot_diversity[[2]], plot_diversity[[3]], 
+         plot_diversity[[4]], plot_diversity[[5]], plot_diversity[[6]], 
+         nrows = 2, margin = 0.04, titleY = TRUE) %>% layout(showlegend = FALSE)
+}
+
+```
+
+Result table for download
+```{r alpha_data, echo=FALSE,fig.width= 8,fig.height=4, cache = FALSE}
+# Generate result tables
+if(is.null(meta_table)){
+SWD_result <-  cbind(colnames(summary_file_taxonomy_short$extract_species),
+                    Species = diversity_data[[1]][, ncol(diversity_data[[1]])],
+                    Genus = diversity_data[[2]][, ncol(diversity_data[[1]])],
+                    Family = diversity_data[[3]][, ncol(diversity_data[[1]])],
+                    Order = diversity_data[[4]][, ncol(diversity_data[[1]])],
+                    Class = diversity_data[[5]][, ncol(diversity_data[[1]])],
+                    Phylum = diversity_data[[6]][, ncol(diversity_data[[1]])])  
+
+datatable(SWD_result, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+
+}else{
+SWD_result <- cbind(meta_table,
+                    Species = diversity_data[[1]][, 3],
+                    Genus = diversity_data[[2]][, 3],
+                    Family = diversity_data[[3]][, 3],
+                    Order = diversity_data[[4]][, 3],
+                    Class = diversity_data[[5]][, 3],
+                    Phylum = diversity_data[[6]][, 3])
+
+datatable(SWD_result, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+}
+
+```
+
+
+`r if(ncol(summary_file_taxonomy_short$extract_species) >2){"# Beta diversity   \n**The figure below displays the beta-diversity on the species level, visualized using PCoA**"}`
+
+
+
+The figure below displays the beta-diversity on the species level, which calculates the Bray-Curtis distances between samples and visualizes using PCoA.
+```{r beta, echo=FALSE,fig.width= 6,fig.height=6}
+
+data_matrix_t <- t(summary_file_taxonomy_short$extract_species)
+d.bray <- vegan::vegdist(data_matrix_t)
+show.d.bray <- as.matrix(d.bray)
+    
+
+      
+if(is.null(meta_table)){
+
+    if(nrow(data_matrix_t) >3){
+      pc.bray <- cmdscale(d.bray, k=3, eig = TRUE)
+    
+      beta_diversity <- as.data.frame(pc.bray$points)
+      beta_diversity <- as.data.frame(cbind(names = rownames(beta_diversity), beta_diversity))
+      
+      plot_ly(beta_diversity, x = ~V1, y = ~V2, z = ~V3, color = ~names,
+              colors = "Dark2") %>%
+              add_markers() %>%
+              add_text(text = ~names) %>%
+              hide_legend() %>%
+              layout(title = "Bray-Curtis PCoA",
+                     scene = list(xaxis = list(title = "PCoA 1"),
+                                  yaxis = list(title = "PCoA 2"),
+                                  zaxis = list(title = "PCoA 3")))
+    
+    }else if (nrow(data_matrix_t) ==3){
+      pc.bray <- cmdscale(d.bray, k=2, eig = TRUE)
+    
+      beta_diversity <- as.data.frame(pc.bray$points)
+      beta_diversity <- as.data.frame(cbind(names = rownames(beta_diversity), beta_diversity))
+    
+     plot_ly(beta_diversity, x = ~V1, y = ~V2, color = ~names,
+             colors = "Dark2") %>%
+             add_markers() %>%
+             add_text(text = ~names) %>%
+             hide_legend() %>%
+              layout(title = "Bray-Curtis PCoA",
+                     scene = list(xaxis = list(title = "PCoA 1"),
+                                  yaxis = list(title = "PCoA 2"),
+                                  zaxis = list(title = "PCoA 3")))
+    }
+}else{
+    
+    if(nrow(data_matrix_t) >3){
+      pc.bray <- cmdscale(d.bray, k=3, eig = TRUE)
+    
+      beta_diversity <- as.data.frame(pc.bray$points)
+      beta_diversity <- as.data.frame(cbind(names = rownames(beta_diversity), Meta = meta_table$meta1, beta_diversity))
+      
+      plot_ly(beta_diversity, x = ~V1, y = ~V2, z = ~V3,color = ~Meta,
+              colors ="Dark2") %>%
+              add_markers() %>%
+              add_trace(
+                text = ~names,
+                showlegend = F
+              ) %>%
+              layout(title = "Bray-Curtis PCoA",
+                     scene = list(xaxis = list(title = "PCoA 1"),
+                                  yaxis = list(title = "PCoA 2"),
+                                  zaxis = list(title = "PCoA 3")))
+      
+    }else if (nrow(data_matrix_t) ==3){
+      pc.bray <- cmdscale(d.bray, k=2, eig = TRUE)
+    
+      beta_diversity <- as.data.frame(pc.bray$points)
+      beta_diversity <- as.data.frame(cbind(names = rownames(beta_diversity), Meta = meta_table$meta1, beta_diversity))
+    
+      plot_ly(beta_diversity, x = ~V1, y = ~V2, color = ~Meta,
+             colors = "Dark2") %>%
+             add_markers() %>%
+             layout(title = "Bray-Curtis PCoA",
+                     scene = list(xaxis = list(title = "PCoA 1"),
+                                  yaxis = list(title = "PCoA 2")))
+    }
+  
+  
+}
+
+
+```
+
+# Sample Clustering
+
+Visualize sample clustering based on the species-level composition.
+Distance measure used is "euclidean", and agglomeration method used is "ward.D".
+(Clustering analysis will be performed when there are more than 2 samples)
+
+```{r cluster_fig, echo=FALSE,fig.width= 8, fig.height=4}
+
+if(ncol(summary_file_taxonomy_short$extract_species) >2){
+  distance <- dist(t(summary_file_taxonomy_short$extract_species), method = "euclidean")
+  fit <- hclust(distance, method= "ward.D")
+  dendro_fit <- as.dendrogram(fit)
+  ggdendrogram(fit, rotate = TRUE, theme_dendro = FALSE, size = 2) + xlab("Samples") + ylab("Distance") +
+               theme_bw() 
+  
+}else{
+  print("There are not enough samples to do clustering.")
+}
+
+
+```
+
+
+# Stacked bar plots based on protein biomass
+
+## Stacked bar plot, species-level:
+```{r composition_fig1, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_species_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Stacked bar plot, genus-level:
+```{r composition_fig2, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_genus_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Stacked bar plot, family-level:
+```{r composition_fig3, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_family_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Stacked bar plot, order-level:
+```{r composition_fig4, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_order_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Stacked bar plot, class-level:
+```{r composition_fig5, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_class_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Stacked bar plot, phylum-level:
+```{r composition_fig6, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_phylum_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+             geom_bar(stat = "identity") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+# Percent stacked bar plots based on protein biomass
+
+## Percent stacked bar plot, species-level:
+```{r composition_fig1p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_species_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Percent stacked bar plot, genus-level:
+```{r composition_fig2p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_genus_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Percent stacked bar plot, family-level:
+```{r composition_fig3p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_family_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Percent stacked bar plot, order-level:
+```{r composition_fig4p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_order_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Percent stacked bar plot, class-level:
+```{r composition_fig5p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_class_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```
+
+## Percent stacked bar plot, phylum-level:
+```{r composition_fig6p, echo=FALSE,fig.width= 10,fig.height=6}
+
+  ggplotly(ggplot(summary_file_taxonomy_long$extract_phylum_gg, aes(x = Sample, y = Intensity, fill = Name)) +
+              geom_col(position = "fill") + theme_bw() +
+             ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  )
+
+```

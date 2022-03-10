@@ -1,0 +1,203 @@
+
+```{r}
+# only need the following variables from parent doc as input
+# peptide_tidyed # this is a list object directly from tidy_peptide_table function
+
+```
+
+
+
+## Intensity
+
+
+<details>
+  <summary>About this plot</summary>
+  
+  * A distribution of the density across samples/experiment
+  * A direct and rough evidence to tell if needed to normalize across samples
+
+</details>
+
+
+
+```{r}
+figure_height <- 0.1*ncol(df_intensity)+4
+
+```
+
+ 
+```{r Peptide Inenisty distribution plot, echo=FALSE,fig.width= 8,fig.height=figure_height}
+
+#note: in this log10 intenisty matrix, 0 is converted into infinity, therefore will not show in the box plot, and does not affect the distribution
+
+data_matrix_log10_melt<-reshape2::melt(as.matrix(log10(data_table_tidied$intensity_matrix)))
+
+colnames(data_matrix_log10_melt) <- c("Proteins", "Samples", "Log10(Inensity)")
+
+ggplot(data_matrix_log10_melt)+
+    geom_violin(aes(x = Samples, y = `Log10(Inensity)`)) +
+    geom_boxplot(aes(x = Samples, y = `Log10(Inensity)`),width=0.2) +
+    labs(title = "Peptide Intensity Distribution", x = "",y = "log10(Intensity)") + 
+    theme_bw()+
+    theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())+
+    coord_flip()
+
+rm(p)
+rm(data_matrix_log10_melt)
+
+```
+
+
+
+## Length
+
+
+<details>
+  <summary>Why peptide length do you expect?</summary>
+  
+  * Averge length of tryptic peptide is around 10. 
+  * refer to this page for peptide length. 
+  *
+![https://www.hindawi.com/journals/isrn/2014/960902/fig3/](https://raw.githubusercontent.com/ningzhibin/rmdocpu/master/inst/rmd/peptide_length.jpg)
+
+</details>
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6}
+
+peptide_length <- as.data.frame(table(data_table_tidied$length))
+colnames(peptide_length) = c("peptide_length", "Freq")
+
+
+ggplot2::ggplot(data = peptide_length)+
+  geom_col(aes(x = peptide_length,y = Freq))+
+  labs(title = "Peptide Length Distribution", x = "Peptide Length",y = "Frequency") + 
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+```
+
+## Score
+
+<details>
+  <summary>Why peptide score do you expect?</summary>
+  
+  * Different search engine usually have different score range
+  * High score usually means better matching quality
+  * Score can be used to assist spectra selection for downstream analysis
+  * The average score from Andromeda (from Maxquant) should be around 50
+
+</details>
+
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6}
+
+df_score <- data.frame(Score  = data_table_tidied$score)
+
+
+ggplot2::ggplot(data=df_score, aes(Score)) +
+  geom_histogram(aes(y=..density..),color= "black",fill="white")+
+  geom_density(alpha=.2, fill="#5DADE2")+
+  labs(title = "Peptide Score Distribution", x = "Peptide Score",y = "Density") + 
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+
+```
+
+
+## Charge States
+
+<details>
+  <summary>Why charge state?</summary>
+  
+1. Peptide Charge distribution is a good sign of trypsin digestion and electric spray ionization.
+
+
+  * In a typical ESI analysis of trytic digest, most of the peptides should have 2 charges, less peptides have 3 charges, because tryptic peptides have a lysine/arginie at the C-terminal, along with N-terminal contributing another charge. A possible miscleavage will contribute the third charge. 
+  
+  
+  * In the ESI procedure, peptides with 2 and more charges are easier to fragment and then identified by MS. However, too many charges will make the m/z of the peptides too small to escape the scan range, further more, it will also complicate the ms2 spectra. 
+
+2. if you see more peptides with charge 3 than charge 2 state
+
+
+  *  It might indicate in-sufficient trypsin digesion, check the percentage of peptides with miss-cleavage site. 
+  
+  *  It might indicate the ESI is not sufficient/good enough.Check the distance between the ESI tip and MS oriface, if the ESI tip is dirty, if there is droplet occasionally.
+  
+
+</details>
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6}
+
+peptide_charge <- as.data.frame(table(data_table_tidied$Charges))
+colnames(peptide_charge) = c("Charge_state", "Freq")
+
+ggplot2::ggplot(data = peptide_charge)+
+  geom_col(aes(x = Charge_state,y = Freq))+
+  labs(title = "Charge Distribution", x = "Charge State",y = "Frequency") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+
+```
+
+
+## Sparsity/Presence
+
+<details>
+  <summary> The more peptides of Q100(100% presence across all experiment) the better quality of the data</summary>
+</details>
+
+```{r echo=FALSE,fig.width= 8,fig.height=6}
+df_sparsity <-data_table_tidied$sparsity # here sparsity is number of present values
+
+
+ggplot2::ggplot(data = df_sparsity)+
+  geom_col(aes(x = sparsity,y = Freq))+
+  labs(title = "Sparsity Distribution", x = "Number of Presence",y = "Number") + 
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+```
+
+***
+<details>
+  <summary> Figure shows the number of peptide in total with more than N presence, which helps to set the presence cutoff</summary>
+</details>
+
+```{r Sparsicty distribution plot, echo=FALSE,fig.width= 8,fig.height=6}
+#df_sparsity_dec <- df_sparsity[order(df_sparsity$sparsity,decreasing = TRUE),]
+
+df_sparsity$cumsum <-  cumsum(df_sparsity$Freq)
+
+# redefine the sparsity sequence, in order to keep the order in the plot, This is the best way as far as I know
+#df_sparsity_dec$sparsity <- factor(df_sparsity_dec$sparsity, levels = df_sparsity_dec$sparsity)
+
+ggplot2::ggplot(data = df_sparsity)+
+  geom_col(aes(x = sparsity,y = cumsum))+
+  labs(title = "Sparsity Distribution", x = "Number of Presence",y = "Frequency") + 
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+
+
+```
+
+
+

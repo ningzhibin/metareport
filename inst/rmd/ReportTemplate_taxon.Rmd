@@ -1,0 +1,465 @@
+---
+title: "Taxonomy Quick View"
+author: Suggestions to imetalabca@gmail.com
+date: Report generated @`r Sys.time()`
+always_allow_html: TRUE
+output:
+  html_document:
+    fig_width: 10
+    fig_caption: TRUE
+    toc: TRUE
+    toc_depth: 4
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    number_sections: TRUE
+  pdf_document:
+    toc: TRUE
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    number_sections: TRUE
+  word_document:
+    toc: TRUE
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    smart: TRUE
+params:  
+  data_table: !r NULL ### Manditory; main data input for the report
+  meta_table: !r NULL ### Optional; If provided, will do some statistics 
+  external_message: !NULL
+  if_html: TRUE # if you want to pdf or word export, set this as FALSE
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r changelog, echo=FALSE, eval= FALSE}
+
+# 20220203 change the input  parameter from input_datatable to data_table, to be unified as the one function
+# 20210804 added percent stacked bar plots
+# 20210608 added Meta information; added downloadable tables
+# 20190819
+
+
+# the input file is tree/lineage file, with all lineage information on different taxon levels, followed by intensity columns across experiments
+# required columns in input file (taxon)
+
+  # 1: Name
+  # 2: Rank
+  # 3: Superkingdom
+  # 4: Kingdom
+  # 5: Phylum
+  # 6: Class
+  # 7: Order
+  # 8: Family
+  # 9: Genus
+  # 10: Species
+  # Intensity a
+  # Intensity b
+  # ... more columns of intensity
+
+
+```
+
+```{r echo = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE)
+```
+
+```{r setup}
+
+htmltools::img(src = system.file("rmd/iMetaReport.png", package = "metareport"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(readxl)
+#library(pheatmap)
+library(reshape2)
+library(vegan)
+#library(ggdendro)
+library(gridExtra)
+library(DT)# for interactive data table display 
+library(rmetalab)
+library(d3r)
+library(sunburstR)
+library(d3Tree)
+```
+
+
+
+
+```{r file_taxonomy, echo=FALSE, fig.width= 15,fig.height=10}
+
+
+data_table <- params$data_table
+meta_table <- params$meta_table
+
+
+taxon_summary <- tidy_taxon_table(data_table)
+experiment_names <- taxon_summary$experiment
+
+# check meta_table
+if( is.null(meta_table)){ 
+  meta_info <- "* **No meta information provided**"
+  
+}else if (any(is.na(meta_table))){ 
+  
+  meta_info <-  "* **The meta information provided has missing values, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+  
+}else if(!identical(sort(toupper(experiment_names)),sort(toupper(meta_table[,2])))){
+  meta_info <-  "* **The experiment setting in meta table provided do not match the experiment in the data_table, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+
+}else{
+  meta_table <- meta_table[,-1] # remove the raw files column, not needed in this report
+  meta_table <- meta_table[match(toupper(experiment_names),toupper(meta_table[,1])),] # ensure the order is the same is the column names
+  meta_info <- NULL
+  # numerate all meta info
+  for(i in 2: ncol(meta_table)){
+     meta_info <-   paste0(meta_info, "* **Grouping ",i-1,": **" , paste0(unique(meta_table[,i]), collapse="; "), "<br>  \n\n" )  
+  }
+}
+
+
+
+```
+
+
+```{r error, results='asis'}
+# use this as a template for conditional multi-line in-line code
+if(!is.null(params$external_message)){
+  cat("# Something went wrong\n")
+  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
+  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  cat(params$external_message)
+} 
+
+```
+
+
+
+# Intro
+
+**This report provides some basic description and visualization of the MetaLab taxonomy results. **
+**The report is based on the taxa.refine.txt, which is a node based hierarchical like data**
+**Users can use this to quickly check the taxonomic profile of the dataset at each taxonomic level.**
+**For more taxon tree view, please go to MetaMap report section **
+
+
+# Sample overview
+
+*  **Number of samples in your dataset: ** `r taxon_summary$experiment_number `
+*  **Number of species identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$species)`
+*  **Number of genera identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$genus)`
+*  **Number of families identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$family)`
+*  **Number of orders identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$order)`
+*  **Number of classes identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$class)`
+*  **Number of phyla identified: ** `r nrow(taxon_summary$taxon_summary_widetable_list$phylum)`
+`r meta_info` 
+
+
+```{r include=FALSE}
+# the purpose of this block is only to inlucde plotly, then ggplotly will be able to display in the for loop:
+# The only working way is to  create a plot outside the loop.
+# see reference: https://github.com/plotly/plotly.R/issues/273
+ggplotly(qplot(1, 1))
+```
+
+
+
+# Overall pattern
+
+<details>
+  <summary>About this plot</summary>
+  
+  * Intensity is based on the total intensity across samples
+  * Graph is plotted by suburstR::sund2b
+  * Tree is plotted by networkD3::diagonalNetwork
+    * Node without labeling is not present
+
+</details>
+
+## sunburst
+
+```{r fig.width= 10, fig.height= 10}
+
+df_tree_sunburst <- data_table %>% select(Superkingdom,Phylum, Class,Order,Family,Genus,Species) %>% na_if("") %>% 
+  cbind(.,intensity = rowSums(data_table[,11:ncol(data_table)]))
+
+sund2b(d3_nest(df_tree_sunburst,value_cols = "intensity"),
+       valueField = "intensity",
+       showLabels =  TRUE)
+
+# 
+# sunburst(
+#   d3_nest(df_tree,value_cols = "intensity"),
+#   valueField = "intensity",
+#   sumNodes = FALSE,
+#   withD3 = FALSE
+# )
+## to do
+
+fig.height_tree <-   nrow(df_tree_sunburst)*0.03 + 6
+
+```
+
+## Tree
+
+```{r fig.width= 12, fig.height= fig.height_tree}
+
+tree <- df2tree(struct = df_tree_sunburst,rootname = 'root')
+networkD3::diagonalNetwork(tree)
+# d3tree(list(root = df2tree(struct = df_tree_sunburst,rootname = 'root'),
+#         layout = 'collapse')
+#       )  
+# d3tree(list(root = tree,
+#         layout = 'cartesian')
+#       )  
+#networkD3::radialNetwork(tree)
+
+
+```
+
+
+
+# Species level Sample Clustering/Similarity
+
+<details>
+  <summary>About this clustering Diversity</summary>
+  
+  * sample clustering based on the species-level composition
+  * Distance measure used is "euclidean" (dist(x,method = "euclidean"))
+  * clustering method: hclust(distance, method= "ward.D")
+  * Clustering analysis will be performed when there are more than 2 samples
+
+</details>
+
+
+```{r}
+fig.height_hca <- taxon_summary$experiment_number*0.2 +5
+```
+
+
+```{r cluster_fig, echo=FALSE,fig.width= 8, fig.height=fig.height_hca}
+count_species <- taxon_summary$taxon_summary_widetable_list$species
+
+
+if(ncol(count_species) >2){
+  plot_HCA(count_species, meta_table = meta_table[,-1])
+}else{
+  print("There are not enough samples to do clustering.")
+}
+```
+
+
+
+
+
+# Richness  {.tabset .tabset-fade }
+
+<details>
+  <summary>What is richness</summary>
+  
+  * Identification count on different levels
+  * [ref
+  * More detailed [References](https://cran.r-project.org/web/packages/tabula/vignettes/diversity.html)
+  * R package used for calculation: tabula
+  
+
+</details>
+
+```{r identification_fig, echo=FALSE, fig.width= 10, fig.height=5}
+# plot on these levels ("Species", "Genus", "Family", "Order", "Class", "Phylum")
+ID_number_table <- taxon_summary$ID_number_table
+plot_list <- plot_taxon_table(ID_number_table, meta_table = meta_table)
+
+```
+
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
+
+for(plot in names(plot_list)){
+  cat(paste0("## ", plot,  "\n"))
+  p = plot_list[[plot]]
+  print(htmltools::tagList(ggplotly(p)))
+  cat("\n***\n")
+}
+
+```
+
+
+## Result table for download
+
+```{r identification_data, echo=FALSE,fig.width= 10,fig.height=8, cache = FALSE}
+
+if(!is.null(meta_table)){
+  ID_number_table <- cbind(meta_table,taxon_summary$ID_number_table)
+}
+
+datatable(ID_number_table, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+
+```
+
+
+
+# Heterogeneity and Evenness {.tabset .tabset-fade }
+
+
+<details>
+  <summary>Alpha Diversity</summary>
+  
+  * Heterogeneity and Evenness belongs to the concept of alpha diversity
+  * We only show Shannon-Wiener index in this plot
+  * the diversity was calculated by vegan::diversity(x,index = "shannon")
+  * more details about what is types of diversity and the way of calculation
+  * [References](https://cran.r-project.org/web/packages/tabula/vignettes/diversity.html)
+  * R package used: vegan and tabula
+  
+
+</details>
+
+```{r alpha_fig, echo=FALSE}
+alpha_diversity_table <- taxon_summary$alpha_diversity$index_diversity_shannon
+plot_list <- plot_taxon_table(alpha_diversity_table, meta_table = meta_table, ylabel = "Alpha Diversity: Shanon")
+
+```
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
+
+for(plot in names(plot_list)){
+  cat(paste0("## ", plot,  "\n"))
+  p = plot_list[[plot]]
+  print(htmltools::tagList(ggplotly(p)))
+  cat("\n***\n")
+}
+
+```
+
+
+
+## Result table for download
+
+```{r alpha_data, echo=FALSE,fig.width= 8,fig.height=4, cache = FALSE}
+if(!is.null(meta_table)){
+  alpha_diversity_table <- cbind(meta_table,alpha_diversity_table)
+}
+
+datatable(alpha_diversity_table, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+
+
+```
+
+
+# Beta diversity {.tabset .tabset-fade }
+
+<details>
+  <summary>Beta Diversity</summary>
+  
+  * here we only show Bray Curtis dissimilarity as one of the beta diversity
+  * The data is based on species level
+  * The caclculation is done by vegan::vegdist(t(count_species),method="bray")
+  * Visualization by PCoA
+  * more details about what is types of diversity and the way of calculation
+  * References: https://en.wikipedia.org/wiki/Bray%E2%80%93Curtis_dissimilarity
+  * R package used: vegan and tabula
+  
+</details>
+
+```{r beta-diversity calculation}
+
+count_species <- taxon_summary$taxon_summary_widetable_list$species
+beta_diversity <- plot_beta_diversity(count_species =count_species, meta_table = meta_table)
+
+```
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
+
+for(plot in names(beta_diversity$plot_list)){
+  cat(paste0("## ", plot,  "\n"))
+  p = beta_diversity$plot_list[[plot]]
+  print(htmltools::tagList(ggplotly(p)))
+  cat("\n\n")
+}
+
+```
+
+## Result table for download
+
+```{r beta_data, echo=FALSE,fig.width= 8,fig.height=4, cache = FALSE}
+datatable(beta_diversity$PCoA.bray, extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           scrollX = TRUE,
+                           buttons = c('copy', 'csv', 'excel'),
+                           pageLength = 10))
+
+
+```
+
+
+
+
+
+# Stacked barplots based on biomass {.tabset .tabset-fade }
+
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
+
+tab_list <- taxon_summary$taxon_summary_longtable_list
+
+for(level in names(tab_list)){
+
+  cat(paste0("## ", level,  "\n"))
+
+  p2 <- ggplot(tab_list[[level]], aes(x = Sample, y = Intensity, fill = Name)) +
+       geom_bar(stat = "identity") + theme_bw() +
+       ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+  print(htmltools::tagList(ggplotly(p2)))
+  
+  
+  cat("\n\n")
+}
+
+
+
+```
+
+
+
+# Normalized bar-plots based on biomass {.tabset .tabset-fade }
+
+```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
+
+tab_list <- taxon_summary$taxon_summary_longtable_list
+
+for(level in names(tab_list)){
+
+  cat(paste0("## ", level,  "\n"))
+
+  p2 <- ggplot(tab_list[[level]], aes(x = Sample, y = Intensity, fill = Name)) +
+       geom_col(position = "fill") + theme_bw() +
+       ylab("Intensity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+  print(htmltools::tagList(ggplotly(p2)))
+  cat("\n\n")
+}
+
+```
+

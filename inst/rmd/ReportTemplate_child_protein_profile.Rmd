@@ -1,0 +1,142 @@
+
+
+
+## Intensity
+
+<details>
+  <summary>About this plot</summary>
+  
+  * A distribution of the density across samples/experiment
+  * A direct and rough evidence to tell if needed to normalize across samples
+
+</details>
+
+
+```{r}
+figure_height <- 0.1*ncol(df_intensity)+4
+
+```
+
+
+```{r protein distribution plot, echo=FALSE,fig.width= 8,fig.height=figure_height}
+
+#note: in this log10 intenisty matrix, 0 is converted into infinity, therefore will not show in the box plot, and does not affect the distribution
+df_intensity_log10 <-log10(df_intensity)
+
+data_matrix_log10_melt<-reshape2::melt(as.matrix(df_intensity_log10))
+
+colnames(data_matrix_log10_melt) <- c("Proteins", "Samples", "Log10(Inensity)")
+
+p<-ggplot(data_matrix_log10_melt)+
+    geom_boxplot(aes(x = Samples, y = `Log10(Inensity)`)) +
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  coord_flip()
+  
+
+plotly::ggplotly(p)
+
+rm(p)
+rm(data_matrix_log10_melt)
+
+
+```
+
+
+
+
+## Unique peptide number
+
+<details>
+  <summary>About this plot</summary>
+  
+  * The more unique peptide per protein, the better quality 
+
+</details>
+
+```{r distribution, eval =  TRUE, echo=FALSE,fig.width= 8,fig.height=6, error=TRUE}
+
+peptide_summary <- as.data.frame(table(data_table_tidied$n_unique_peptides))
+colnames(peptide_summary) = c("Unique_Peptides", "Freq")
+
+p<- ggplot2::ggplot(data = peptide_summary)+
+ geom_col(aes(x = Unique_Peptides,y = Freq))+
+ theme_bw()
+plotly::ggplotly(p)
+
+```
+
+
+
+## Protein Score distribution
+
+<details>
+  <summary>About this plot</summary>
+  
+  * The higher score the better quality
+  * Different search engine usually have different score range
+
+</details>
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6, error=TRUE}
+
+df_score <- data.frame(Score  = data_table_tidied$score)
+
+p<- ggplot2::ggplot(data=df_score, aes(Score)) +
+  geom_histogram(aes(y=..density..),color= "black",fill="white")+
+  geom_density(alpha=.2, fill="#FF6666")+
+  theme_bw()
+
+plotly::ggplotly(p)
+
+```
+
+
+## Sparsity 
+
+Columns starting with "LFQ_intensity_" will be selected if exist (meaning LFQ option was checked for label free quantification, which is deliberately processed by Maxquant already), otherwise Intensity_ columns will be used instead for protein experession.
+
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6}
+
+df_sparsity <- data_table_tidied$sparsity
+
+p<- ggplot2::ggplot(data = df_sparsity)+
+  geom_col(aes(x = sparsity,y = Freq))+
+  xlab("Presence in the Protein Intensity Matrix")+
+  theme_bw()
+plotly::ggplotly(p)
+```
+
+
+<details>
+  <summary> Figure shows the number of peptide in total with more than N presence, which helps to set the presence cutoff</summary>
+</details>
+
+```{r Sparsicty distribution plot, echo=FALSE,fig.width= 8,fig.height=6}
+#df_sparsity_dec <- df_sparsity[order(df_sparsity$sparsity,decreasing = TRUE),]
+
+df_sparsity$cumsum <-  cumsum(df_sparsity$Freq)
+
+# redefine the sparsity sequence, in order to keep the order in the plot, This is the best way as far as I know
+#df_sparsity_dec$sparsity <- factor(df_sparsity_dec$sparsity, levels = df_sparsity_dec$sparsity)
+
+ggplot2::ggplot(data = df_sparsity)+
+  geom_col(aes(x = sparsity,y = cumsum))+
+  labs(title = "Sparsity Distribution", x = "Number of Presence",y = "Frequency") + 
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        panel.grid = element_blank())
+
+
+
+```
+
+
+
+
+
+

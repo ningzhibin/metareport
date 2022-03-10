@@ -1,0 +1,265 @@
+---
+title: "MetaLab Identification Summary"
+author: Suggestions to techteam.metalab@gmail.com
+date: Report generated @`r Sys.time()`
+always_allow_html: TRUE
+output:
+  html_document:
+    fig_width: 10
+    fig_caption: TRUE
+    toc: TRUE
+    toc_depth: 4
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    number_sections: TRUE
+  pdf_document:
+    toc: true
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    number_sections: TRUE
+  word_document:
+    toc: true
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    smart: TRUE
+params:  
+  data_table: !r NULL ### Manditory, main data input for the report
+  meta_table: !r NULL ### Optional, If provided, will do grouping based statistics
+  external_message: !NULL
+  if_html: TRUE # if you want to pdf or word export, set this as FALSE, but will lose interactivity, not meant for metalab report
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+
+```{r, changelog, echo=FALSE}
+# 20220211 revised the versioin for metareport package
+
+  # main input is a identifcation summary txt file
+  # natively support summary.txt from maxquant output in the txt folder
+  # dealing with multiple meta groupings, plot accordingly
+  # testing the knit function with child, if not working, go back to the traditional one
+
+# the following columns are read for plot
+
+  # Raw file
+  # Experiment
+  # MS/MS
+  # MS/MS Identified
+  # MS/MS Identified [%]
+  # Peptide Sequences Identified
+
+
+
+```
+
+
+
+```{r logo, echo=FALSE}
+
+  htmltools::img(src = system.file("rmd/iMetaReport.png", package = "metareport"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
+
+
+```
+
+
+
+
+```{r enviroment_setup, include=FALSE}
+# environment setup
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(rmetalab) # wrapped functions in metalab # install 
+
+```
+
+
+
+```{r errorMessage, results='asis'}
+# use this as a template for conditional multi-line in-line code
+if(!is.null(params$external_message)){
+  cat("# Something went wrong\n")
+  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
+  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  cat(params$external_message)
+} 
+
+```
+
+
+# Intro
+
+**This report provides basic overview of the database search. **
+**Users can use this to quickly check the overall quality of the experiment**
+
+
+
+```{r process and meta_table check, echo=FALSE,fig.width= 15,fig.height=10, error=TRUE, eval= TRUE}
+
+# collect input
+data_table <- params$data_table
+meta_table <- params$meta_table 
+
+# process the file
+summary_file_summary <- tidy_MQ_summary(data_table)
+
+# get the raw stat line for output
+df_all <- as.data.frame(t(summary_file_summary$summary_all))
+
+# get the raw file information dataframe
+raw <-summary_file_summary$summary_rawfiles
+
+
+# check meta_table
+if( is.null(meta_table)){ 
+  
+  meta_info <- "* **No meta information provided**"
+  
+}else if (any(is.na(meta_table))){ 
+  
+  meta_info <-  "* **The meta information provided has missing values, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+  
+}else if(!all(sort(raw$Raw.file) == sort(meta_table[,1]))){
+  meta_info <-  "* **The raw files in meta information provided do not match the raw file names in the data file, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+
+}else{
+  meta_info <- NULL
+  # numerate all meta info
+  for(i in 3: ncol(meta_table)){
+     meta_info <-   paste0(meta_info, "* **Groups: **" , paste0(unique(meta_table[,i]), collapse="; "), "<br>  \n\n" )  
+  }
+}
+
+
+
+```
+
+
+```{r}
+# determine the figure height. if some files have too many samples, it would be a good idea to increase the height to make it easier to read
+ figure_height <- 0.1*nrow(raw)+2
+```
+
+
+
+# Take-home figures
+
+
+*  **Peptide Sequences Identified in total: ** `r df_all["Peptide.Sequences.Identified"]`
+
+*  **Avearge ms/ms identification rate(%): ** `r df_all["MS.MS.Identified...."]`
+
+`r meta_info` 
+
+
+#  MSMS ID rate {.tabset .tabset-fade }
+
+***
+
+
+<details>
+  <summary>Why you should pay attention to MSMS Id rate?</summary>
+  
+1. MS ID rate is a good preparation of the MS run quality. Usually, raw files from Q-Exactive series should have roughly around 50% ms ID rate (Percentage of MSMS spectra identified as peptides, at a 1% FDR) for human cell culture digest, and at least 20% for metaproteomics samples according to experience. This number is a bit lower on QE- HFX and Exploris 480, because the scan rate is faster but the MS2 quality is not a bit lower
+
+2. MS ID rate should also be well-reproduced across samples and groupings. 
+
+3. Check the raw files if they have abnormally low ID rate, usually with abnormal LC/basepeak profile or low MS intensity. 
+4. A decreasing MS ID trend along sample running order indicates a performance drop of the MS: your MS might need to be cleaned. If the performance drops a lot, more than 20% within running time for the whole project, without scramble of the sample run-order, the data might not be usable, unless very carefully calibrated. 
+
+</details>
+
+***
+
+
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+data_table_plot <- data.frame(rawfile= raw[["Raw.file"]], msms_id_rate = raw[["MS.MS.Identified...."]])
+cutoff <- 20
+maintitle <- "MSMS ID Rate"
+xlabel <- "MSMS ID Rate (%)"
+
+
+if(!is.null(meta_table)){
+  for(i in 3: ncol(meta_table)){ # i is the column index
+      #section_title <-   paste0(unique(meta_table[,i]), collapse="; ")   
+       section_title<- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") ) 
+       no_grouping <- "FALSE"
+       res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       cat(res, sep = '\n')
+   }
+}else{
+  
+  section_title <- ""
+  no_grouping <- TRUE
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  cat(res, sep = '\n')
+
+}
+
+```
+
+
+
+#  Peptide Sequence identified {.tabset .tabset-fade }
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+
+data_table_plot <- data.frame(rawfile = raw[["Raw.file"]], Peptide_sequence_identified = raw[["Peptide.Sequences.Identified"]])
+cutoff <- 5000
+maintitle <- "Peptide Sequences Identified"
+xlabel <- "# Peptide Sequences Identified"
+
+
+
+if(!is.null(meta_table)){
+  for(i in 3: ncol(meta_table)){ # i is the column index
+       section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") ) 
+       no_grouping <- "FALSE"
+       res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       cat(res, sep = '\n')
+   }
+}else{
+  
+  section_title <- ""
+  no_grouping <- TRUE
+  
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  cat(res, sep = '\n')
+  
+}
+
+```
+
+
+
+# Overall Performance
+
+**The overall performance for all raw files:**
+
+```{r echo=FALSE, error = TRUE, eval= TRUE}
+if(params$if_html){
+  nrows <- nrow(summary_file_summary$summary_all)
+  DT::datatable(summary_file_summary$summary_all,options = list(pageLength = nrows)) # datatable is only good for html 
+}else{
+  knitr::kable(summary_file_summary$summary_all)
+}
+
+```

@@ -1,0 +1,64 @@
+
+<!-- input: PCA_result-->
+
+
+##  `r section_title ` 
+
+
+```{r}
+
+df_intensity_Q100 <- data_table_tidied$intensity_matrix_Q100
+
+pvalues_anova <- matrix_Anova_1_PostHoc(df_intensity_Q100,meta_table[,i],p_anova = 0.01, p_ttest = 0.01)
+
+if(all(is.na(pvalues_anova))){
+  pvalues_anova <- matrix_Anova_1_PostHoc(df_intensity_Q100,meta_table[,i],p_anova = 0.05, p_ttest = 0.05)
+
+}
+
+if(!all(is.na(pvalues_anova))){
+  df_intensity_p <- cbind(peptide = rownames(pvalues_anova), 
+                        pvalues_anova, 
+                        chart = apply(df_intensity_Q100,1, function(x) jsonlite::toJSON(list(values=x, options = list(type = "line")))),
+                        df_intensity_Q100)
+
+  df_intensity_p_filtered <- df_intensity_p[which(!is.na(df_intensity_p[,2])),]
+
+  row.names(df_intensity_p_filtered) <- 1: nrow(df_intensity_p_filtered)
+
+  df_intensity_p_filtered$peptide <-  paste0("<a href='", paste0("https://unipept.ugent.be/sequences/", df_intensity_p_filtered$peptide,"/"),"' target='_blank'>",df_intensity_p_filtered$peptide,"</a>")
+  
+
+
+rhandsontable(df_intensity_p_filtered, width = 800, height = 500 ) %>%  
+  hot_col("peptide", renderer = htmlwidgets::JS("safeHtmlRenderer")) %>%  
+  hot_col("chart", renderer = htmlwidgets::JS("renderSparkline"))  %>%
+  hot_context_menu(
+    customOpts = list(
+      csv = list(name = "Download to CSV",
+                    callback = htmlwidgets::JS(
+                      "function (key, options) {
+                         var csv = csvString(this, sep=',', dec='.');
+
+                         var link = document.createElement('a');
+                         link.setAttribute('href', 'data:text/plain;charset=utf-8,' +
+                           encodeURIComponent(csv));
+                         link.setAttribute('download', 'data.csv');
+
+                         document.body.appendChild(link);
+                         link.click();
+                         document.body.removeChild(link);
+                       }"))))
+
+
+}else{
+  
+  cat("no significantly changed peptide found even under threshold of 0.05 ")
+  
+}
+
+```
+
+
+
+

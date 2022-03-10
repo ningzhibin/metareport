@@ -1,0 +1,65 @@
+
+
+<!-- input: df_intensity, pure data.matrix with intensity -->
+<!-- input optional: meta_data -->
+
+```{r echo =FALSE, error=TRUE }
+
+df_intensity_for_PCA <- df_intensity[which(rowSums(df_intensity > 0) == ncol(df_intensity)) , , drop = FALSE] # the Q100 features/rows intensity matrix
+
+if(nrow(df_intensity_for_PCA) ==0){
+  cat("* No Q100 items, using top100 with intensity+1 for analyis")
+}
+
+if(nrow(df_intensity_for_PCA) == 0){
+  df_intensity_for_PCA <- (df_intensity+1) %>% slice_max(order_by = rowSums(.), n =100)
+}
+
+PCA_result <- prcomp(t(log10(df_intensity_for_PCA)), scale = TRUE)
+loading <- as.data.frame(PCA_result$x)
+```
+
+
+## PCA Contribution
+
+* Screeplot
+
+```{r echo =FALSE, fig.width= 8,fig.height=4, error=TRUE }
+    factoextra::fviz_screeplot(PCA_result, barcolor = "grey", barfill  = "grey", addlabels = TRUE )
+```
+
+
+* Contribution
+
+```{r echo =FALSE, fig.width= 8,fig.height=4, error=TRUE }
+  factoextra::fviz_contrib(PCA_result, choice = "ind", axes = 1, color = "grey",fill  = "grey")
+```
+
+
+
+##  PCA without Grouping {.tabset .tabset-fade }
+
+### 2D plot
+
+```{r echo =FALSE, fig.width= 8,fig.height=6, error=TRUE }
+factoextra::fviz_pca_ind(PCA_result,col.ind = "cos2",# Color by the quality of representation
+                        gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                         repel = TRUE)
+  
+```
+
+
+### 3D Scatterplot {.tabset .tabset-fade }
+
+```{r echo =FALSE, fig.width= 8,fig.height=6, error=TRUE }
+    # only for HTML output
+    if(params$if_html){
+      plot_ly(loading, x = ~PC1, y = ~PC2, z = ~PC3) %>%
+      add_markers() %>%
+      add_text(text = row.names(loading))
+    }
+```
+
+
+
+

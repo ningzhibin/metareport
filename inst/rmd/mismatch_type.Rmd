@@ -1,0 +1,58 @@
+---
+title: "MetaLab Report"
+author: Suggestions to techteam.metalab@gmail.com
+date: Report generated @`r Sys.time()`
+always_allow_html: TRUE
+output:
+  html_document:
+    fig_width: 10
+    fig_caption: TRUE
+    toc: FALSE
+    toc_depth: 4
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    number_sections: TRUE
+  pdf_document:
+    toc: FALSE
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    number_sections: TRUE
+  word_document:
+    toc: true
+    toc_depth: 4
+    highlight: tango
+    df_print: kable
+    smart: TRUE
+params:  
+  data_table: !r NULL ### Manditory; main data input for the report
+  meta_table: !r NULL ### Optional; If provided, will do extra statistics based on grouping information 
+  if_html: TRUE # if you want to pdf or word export, set this as FALSE
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+
+
+```{r logo in html, echo=FALSE}
+  htmltools::img(src = "https://raw.githubusercontent.com/ningzhibin/rmdocpu/master/inst/rmd/iMetaReport.png", 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
+
+```
+
+
+
+# You see this page because the type parameter was setup wrongly that no corresponding template was found.
+
+# It has to be one of  "summary", "peptide", "protein", "taxon", "function" 
+
+
+

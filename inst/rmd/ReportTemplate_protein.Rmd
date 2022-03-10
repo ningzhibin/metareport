@@ -1,0 +1,248 @@
+---
+title: "Protein Profiling"
+author: Suggestions to imetalabca@gmail.com
+date: Report generated @`r Sys.time()`
+output:
+  html_document:
+    fig_width: 10
+    fig_caption: TRUE
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    number_sections: true
+params:  
+  data_table: !r NULL ### Manditory; main data input for the report
+  meta_table: !r NULL ### Optional; If provided, will do some statistics
+  external_message: !NULL
+  if_html: TRUE # if you want to pdf or word export, set this as FALSE
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r, echo=FALSE}
+# change log
+# 20220203 change the input  parameter from input_datable to data_table, to be unified as the one function
+
+
+
+```
+
+
+
+
+```{r,setup, echo=FALSE, warning = FALSE, message = FALSE}
+
+htmltools::img(src = system.file("rmd/iMetaReport.png", package = "metareport"),
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
+
+# enviroment setup
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, message = FALSE, cache = FALSE, error = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(d3heatmap)
+library(plotly)
+library(rmetalab)
+library(gplots)
+library(rhandsontable)
+
+```
+```{r errorMEssage, results='asis'}
+# use this as a template for conditional multi-line in-line code
+if(!is.null(params$external_message)){
+  cat("# Something went wrong\n")
+  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
+  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  cat(params$external_message)
+} 
+
+```
+
+
+```{r collect_input, echo=FALSE,fig.width= 15,fig.height=10}
+# collect input
+data_table <- params$data_table
+meta_table <- params$meta_table 
+
+# process the data_table
+data_table_tidied <- tidy_protein_table(data_table)  # tidy and process,
+df_intensity <- data_table_tidied$intensity_matrix 
+
+
+# Note: The folling analysis with meta info assumes that
+# 1st columns as sample name, 2nd column as experiment name, 3rd column and after as grouping
+
+# check meta_table
+if( is.null(meta_table)){ 
+  meta_info <- "* **No meta information provided**"
+  
+}else if (any(is.na(meta_table))){ 
+  
+  meta_info <-  "* **The meta information provided has missing values, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+  
+}else if(!identical(sort(data_table_tidied$experiment),sort(meta_table[,2]))){
+  meta_info <-  "* **The experiment setting in meta table provided do not match the experiment in the data_table, please check, analysis continues without grouping information**"
+  meta_table <- NULL
+
+}else{
+  meta_table <- meta_table[,-1] # remove the raw files column, not needed in this report
+  meta_table <- meta_table[match(colnames(df_intensity),meta_table[,1]),] # ensure the order is the same is the column names
+  meta_info <- NULL
+  # numerate all meta info
+  for(i in 2: ncol(meta_table)){
+     meta_info <-   paste0(meta_info, "* **Grouping ",i-1,": **" , paste0(unique(meta_table[,i]), collapse="; "), "<br>  \n\n" )  
+  }
+}
+
+```
+
+
+
+# Intro
+
+**This report provides some basic description of the protein(groups) identification. **
+
+**Users can use this to quickly check the overal quality of the experiment**
+
+
+
+# Quick Message
+
+
+*  **Number of contaminant: ** `r data_table_tidied$n_contaminant`
+
+*  **Number of reversed: ** `r data_table_tidied$n_reversed`
+
+*  **Number of qualified proteingroups: ** `r ncol(df_intensity)`
+
+*  **Number of experiment:  ** `r ncol(df_intensity)`
+
+*  **All experiments:  ** `r colnames(df_intensity)`
+
+`r meta_info` 
+
+
+# Protein identification profiling  {.tabset .tabset-fade }
+
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_protein_profile.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+cat(res, sep = '\n')
+
+```
+
+
+
+# Heatmap and Hierarchical clustering {.tabset .tabset-fade }
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
+  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  cat(res, sep = '\n')
+}else{
+  cat("There is only one column/experiment, no heatmap needed!")
+}
+
+
+```
+
+
+
+
+# PCA Analysis {.tabset .tabset-fade }
+
+```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
+
+if(length(data_table_tidied$experiment ) > 3){
+  
+  if(nrow(data_table_tidied$intensity_matrix_Q100) ==0){
+    cat("* No Q100 items, using top100 with intensity+1 for analyis")
+  }
+  
+  res <- knitr::knit_child('ReportTemplate_child_PCA.Rmd', quiet = TRUE)
+  cat(res, sep = '\n')
+  
+  # for extra plot with grouping information
+  if(!is.null(meta_table)){
+    for(i in 2: ncol(meta_table)){ 
+       section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
+       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       cat(res, sep = '\n')
+   }
+  }
+  
+}
+
+```
+
+
+
+
+
+```{r echo=FALSE,results='asis', error=TRUE, eval= TRUE}
+  
+  if(!is.null(meta_table)){ # only do this when meta provided
+        cat("# Differential Analysis {.tabset .tabset-fade } \n")
+    
+    cat ("<details> \n")
+
+    cat ("<summary>About this section</summary> \n")
+    cat("* t-test will be performed for two samples setting, while annova will be performed for 3 and more samples \n")
+    cat("* Note that this Differential Analysis is performed on only Q100 peptides for quick profiling \n")
+    cat("* Only do analysis 1 with more than (including) two groups, 2: each group has replicates. \n")
+    
+    cat ("</details> \n")
+    
+
+    for(i in 2: ncol(meta_table)){ # i is the column index
+      
+       section_title<- paste0("Grouping: " , paste(unique(meta_table[,i]), collapse="; ") )
+       
+       if(length(unique(meta_table[,i])) >=2  && all(table(meta_table[,i]) >=2)){
+         # will do ANOVA analysis block while: 
+         # 1: more than (including) 3 groups, 2: each group has replicates.
+            res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_protein_DA.Rmd", package = "metareport"), quiet = TRUE)
+            cat(res, sep = '\n')
+       }
+   }
+  }
+  
+
+
+```
+
+
+```{r echo=FALSE,fig.width= 8,fig.height=6, eval= FALSE}
+# will do this block while: 1, more than (includeing) two meta/groups, 2, each group has more than (includeing) 2 samples.
+if(length(unique(meta_table[,3])) >=2 && all(table(meta_table[,3]) >=2)){
+
+pvalues_anova <- matrix_PostHoc(df_intensity,meta_table[,3])
+
+df_intensity_p <- cbind(pvalues_anova, df_intensity)
+
+rownames(df_intensity_p) <- protein_primary_ids
+
+df_intensity_p_filtered <- df_intensity_p[which(!is.na(df_intensity_p$p_PostHoc_pairs)),] 
+
+DT::datatable(df_intensity_p_filtered, extensions = 'Buttons',options = list(dom = "Blfrtip",scrollX=TRUE, buttons = list('copy', 'print', list(
+        extend = 'collection',
+        buttons = c('csv', 'excel', 'pdf'),
+        text = 'Download'
+      ))))
+
+}
+
+
+```
+
+
