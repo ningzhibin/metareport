@@ -153,9 +153,8 @@ metareport_summary <- function(data_file, meta_file = NULL, output_format = "htm
   if(!is.null(meta_file)){
     meta_table <- read.delim(meta_file, header = TRUE, check.names = TRUE, stringsAsFactors = FALSE) # with meta file
     rmarkdown::render(input_template,output_format = output_format, params = list(data_table =  data_table, meta_table = meta_table), output_file="output.html")
-    
   }else{
-    rmarkdown::render(input_template,output_format = output_format, params = list(summary_file_tbl =  data_table), output_file="output.html")
+    rmarkdown::render(input_template,output_format = output_format, params = list(data_table =  data_table), output_file="output.html")
   }
   
   invisible()
