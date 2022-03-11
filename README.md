@@ -89,6 +89,8 @@ Once you know the principle how to upload (post) your data table, and download t
 
 # change log
 
+V 0.2.3 (20220311) bug fix for error_message
+
 V 0.2.0 (20220301) completely re-write the code for all 5 templates, using sub-doc and functions to deal with meta to make better usage of the code. This version also does not rely on external templates, etc. from github, gitlab. All resources are locally stored. A lot of reused coding blocks are packed into functions, into another acompany package, rmetalab. All these efforts are made to make the template consise and expandable.  
 This version is first destined to be compatible with the new HGM version, and will be applied to other versions as well. 
 

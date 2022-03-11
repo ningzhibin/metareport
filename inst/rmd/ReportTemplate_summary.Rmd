@@ -58,8 +58,6 @@ params:
   # MS/MS Identified [%]
   # Peptide Sequences Identified
 
-
-
 ```
 
 
