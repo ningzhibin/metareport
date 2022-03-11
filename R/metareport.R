@@ -134,6 +134,16 @@ metareport <- function(type = "summary", # mandatory
 
 
 
+#' summary version of metareport 
+#'
+#' @param data_file 
+#' @param meta_file 
+#' @param output_format 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 metareport_summary <- function(data_file, meta_file = NULL, output_format = "html_document"){
   
   data_table <- read.delim(data_file, header = TRUE,check.names = TRUE, stringsAsFactors = FALSE)
