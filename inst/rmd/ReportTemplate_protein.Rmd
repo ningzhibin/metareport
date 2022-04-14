@@ -15,7 +15,7 @@ output:
 params:  
   data_table: !r NULL ### Manditory; main data input for the report
   meta_table: !r NULL ### Optional; If provided, will do some statistics
-  external_message: !NULL
+  external_message: !r NULL
   if_html: TRUE # if you want to pdf or word export, set this as FALSE
 ---
 
@@ -118,12 +118,7 @@ if( is.null(meta_table)){
 
 # Quick Message
 
-
-*  **Number of contaminant: ** `r data_table_tidied$n_contaminant`
-
-*  **Number of reversed: ** `r data_table_tidied$n_reversed`
-
-*  **Number of qualified proteingroups: ** `r ncol(df_intensity)`
+*  **Number of qualified proteingroups: ** `r nrow(df_intensity)`
 
 *  **Number of experiment:  ** `r ncol(df_intensity)`
 

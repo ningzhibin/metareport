@@ -43,8 +43,8 @@ metareport(type = "peptide",
    
 # for protein
 metareport(type = "protein",
-           data_file = "extdata/HGM/final_proteins.tsv",
-           meta_file = "extdata/HGM/meta_info.tsv",
+           data_file = system.file("extdata/HGM/final_proteins.tsv",package = "metareport"),
+           meta_file = system.file("extdata/HGM/meta_info.tsv", package = "metareport"),
            output_dir =  getwd(), 
            output_file = "report_protein.html")        
 
@@ -89,6 +89,12 @@ Once you know the principle how to upload (post) your data table, and download t
 
 # change log
 
+
+v 0.2.4 20220413 bug fix, 
+  * function module, for voronoi plots, categories with 0 needs to be removed, otherwise the whole plot is going to be black, and the following figures will not show
+  * input parameter type: external_message: !r NULL (was ! NULL)
+  * proteingroup module, wrong output of number of proteins, and deleted the item for reversed and contaminant. 
+
 V 0.2.3 (20220311) bug fix for error_message
 
 V 0.2.0 (20220301) completely re-write the code for all 5 templates, using sub-doc and functions to deal with meta to make better usage of the code. This version also does not rely on external templates, etc. from github, gitlab. All resources are locally stored. A lot of reused coding blocks are packed into functions, into another acompany package, rmetalab. All these efforts are made to make the template consise and expandable.  
@@ -105,13 +111,14 @@ V 0.0.6 add support for pdf format report generation (for some slow computers, o
 
 
 
-# package needed
+# package needed, not listed and required in the r package, which very likely stops installation
 
   GSVA,
   limma,
   kableExtra,
   rmetalab,
   dendextend
+  rhandsontable
   
   
 

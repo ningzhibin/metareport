@@ -28,7 +28,7 @@ output:
 params:  
   data_table: !r NULL ### Manditory, main data input for the report
   meta_table: !r NULL ### Optional, If provided, will do grouping based statistics
-  external_message: !NULL
+  external_message: !r NULL
   if_html: TRUE # if you want to pdf or word export, set this as FALSE, but will lose interactivity, not meant for metalab report
 ---
 

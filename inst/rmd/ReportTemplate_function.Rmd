@@ -21,7 +21,7 @@ output:
 params:
   data_table: !r NULL
   meta_table: !r NULL
-  external_message: !NULL
+  external_message: !r NULL
   if_html: TRUE # if you want to pdf or word export, set this as FALSE
 
 ---
@@ -272,7 +272,10 @@ data_table_NOG <- cbind(NOG.category = data_table$NOG.category, intensity_column
 data_table_NOG_sum <- data.frame( h2 = data_table_NOG[, 1],
                        weight = rowSums(data_table_NOG[,2:ncol(data_table_NOG)]))
 
+data_table_NOG_sum <- data_table_NOG_sum[data_table_NOG_sum$weight != 0,] # if there is any 0, the whole plot will be black
+
 plot_COG_voronoi(data_table_NOG_sum)
+
 
 
 ```
@@ -293,7 +296,7 @@ plot_COG_voronoi(data_table_NOG_sum)
 
 ### Raw 
 
-```{r COG, echo=FALSE,fig.width= 10, fig.height=5}
+```{r echo=FALSE,fig.width= 10, fig.height=5}
 
 # Prepare data for plotting
 data_table_COG_melt <- melt(data = data_table_COG,id.vars = c("COG.category"), variable.name = "Sample", value.name = "Intensity")
@@ -308,7 +311,7 @@ ggplotly(ggplot(data_table_COG_melt, aes(x = Sample, y = Intensity, fill = COG.c
 ### Normalized
 
 
-```{r COG_rel, echo=FALSE,fig.width= 10, fig.height=5}
+```{r echo=FALSE,fig.width= 10, fig.height=5}
 
 #Draw stacked column bar
 ggplotly(ggplot(data_table_COG_melt, aes(x = Sample, y = Intensity, fill = COG.category)) +
