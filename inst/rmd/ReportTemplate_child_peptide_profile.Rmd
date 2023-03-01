@@ -158,6 +158,24 @@ ggplot2::ggplot(data = peptide_charge)+
 
 <details>
   <summary> The more peptides of Q100(100% presence across all experiment) the better quality of the data</summary>
+  
+  1. How is this sparsity calculated?
+  
+  * Based on the intensity table
+  
+  * count number of occurrence (intenisty >0 as present) of each row (rowSums(df_intensity > 0))
+  
+  * do table (frequency) of this sparsity vector (table(sparsity))
+  
+  * order this table accroding to the sparisty/presence frequency
+  
+  2. How to read this plot?
+  
+  * x is the number of presence across experiments
+  
+  * y is the number of peptides present in x number of experiments
+  
+  
 </details>
 
 ```{r echo=FALSE,fig.width= 8,fig.height=6}
@@ -176,7 +194,10 @@ ggplot2::ggplot(data = df_sparsity)+
 
 ***
 <details>
-  <summary> Figure shows the number of peptide in total with more than N presence, which helps to set the presence cutoff</summary>
+  <summary> Figure shows the accumulated sparsity (number of peptides in total with MORE THAN N presence), which helps to set the presence cutoff</summary>
+  
+  Data source is the samme as above, but further accumulated (cumsum)
+  
 </details>
 
 ```{r Sparsicty distribution plot, echo=FALSE,fig.width= 8,fig.height=6}

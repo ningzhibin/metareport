@@ -73,9 +73,10 @@ metareport <- function(type = "summary", # mandatory
     }
   }
   
-  # read in data table, if there there is error  no need to continue, 
-  # if there is detrimental warnings stopping readiing in the whole table, even conitue, it will not render a full report
-  withCallingHandlers(data_table <- rio::import(data_file, check.names = TRUE),
+  # read in data table, no need to continue if there there is error 
+  # if there is detrimental warnings, stop reading in the whole table, no point to continue, cause it will not render a full report
+  withCallingHandlers(#data_table <- rio::import(data_file, header = TRUE, check.names = TRUE),
+                      data_table <- read.delim(data_file,header = TRUE, check.names = TRUE, sep = "\t"),
                       
                       warning = function(w){ print("warning triggered!");
                         warning_message <<- c(warning_message,"\n","There is warning messages while reading in the function data file, 
@@ -107,7 +108,7 @@ metareport <- function(type = "summary", # mandatory
                           warning_message <- c(warning_message,"\n", toString(e), "Conitune without meta information") 
                           rmarkdown::render(template_file_path,
                                             output_format = output_format, 
-                                            params = list(data_table =  data_table,  external_message = warning_message), 
+                                            params = list(template_version = template_version, data_table =  data_table,  external_message = warning_message), 
                                             output_file = output_file, 
                                             output_dir =  output_dir)
                         }                 
@@ -115,52 +116,25 @@ metareport <- function(type = "summary", # mandatory
     
     rmarkdown::render(template_file_path,
                       output_format = output_format, 
-                      params = list(data_table =  data_table, meta_table = meta_table, external_message = warning_message), 
+                      params = list(template_version = template_version, data_table =  data_table, meta_table = meta_table, external_message = warning_message), 
                       output_file = output_file, 
                       output_dir =  output_dir)
     
     
   }else{
+    
     rmarkdown::render(template_file_path,
                       output_format = output_format, 
-                      params = list(data_table =  data_table, external_message = warning_message), 
+                      params = list(template_version = template_version, data_table =  data_table, external_message = warning_message), 
                       output_file = output_file, 
                       output_dir =  output_dir)
+    
+    
     
   }
   
   invisible()
 }
-
-
-
-#' summary version of metareport 
-#'
-#' @param data_file 
-#' @param meta_file 
-#' @param output_format 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-metareport_summary <- function(data_file, meta_file = NULL, output_format = "html_document"){
-  
-  data_table <- read.delim(data_file, header = TRUE,check.names = TRUE, stringsAsFactors = FALSE)
-  
-  input_template <- system.file("rmd/ReportTemplate_summary.Rmd", package = "metareport")
-  
-  if(!is.null(meta_file)){
-    meta_table <- read.delim(meta_file, header = TRUE, check.names = TRUE, stringsAsFactors = FALSE) # with meta file
-    rmarkdown::render(input_template,output_format = output_format, params = list(data_table =  data_table, meta_table = meta_table), output_file="output.html")
-  }else{
-    rmarkdown::render(input_template,output_format = output_format, params = list(data_table =  data_table), output_file="output.html")
-  }
-  
-  invisible()
-}
-
-
 
 
 

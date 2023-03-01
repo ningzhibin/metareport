@@ -26,6 +26,7 @@ output:
     df_print: kable
     smart: TRUE
 params:  
+  template_version: "stable"
   data_table: !r NULL ### Manditory; main data input for the report
   meta_table: !r NULL ### Optional; If provided, will do some statistics 
   external_message: !r NULL
@@ -40,8 +41,15 @@ params:
 }
 </style>
 
-```{r changelog, echo=FALSE, eval= FALSE}
+```{r changelog, echo=FALSE}
+this_version <-  "2.1" # template change version
 
+# 20220527 major update 
+  # a new parameter, 
+  # template version display
+  # bug fix for the development version path 
+
+# 20220426 bug fix for single raw file report, by simply adding drop = FALSE
 # 20220203 change the input  parameter from input_datatable to data_table, to be unified as the one function
 # 20210804 added percent stacked bar plots
 # 20210608 added Meta information; added downloadable tables
@@ -91,6 +99,7 @@ library(rmetalab)
 library(d3r)
 library(sunburstR)
 library(d3Tree)
+
 ```
 
 
@@ -135,6 +144,15 @@ if( is.null(meta_table)){
 
 
 ```{r error, results='asis'}
+
+ cat(paste0("Template version: ",template_version, " ", this_version))
+
+# if (template_version == "stable"){
+#   path = find.package("metareport")
+# }else if(template_version == "develop"){
+#   path = getwd()
+# }
+
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
   cat("# Something went wrong\n")
@@ -193,7 +211,7 @@ ggplotly(qplot(1, 1))
 ```{r fig.width= 10, fig.height= 10}
 
 df_tree_sunburst <- data_table %>% select(Superkingdom,Phylum, Class,Order,Family,Genus,Species) %>% na_if("") %>% 
-  cbind(.,intensity = rowSums(data_table[,11:ncol(data_table)]))
+  cbind(.,intensity = rowSums(data_table[,11:ncol(data_table),drop = FALSE]))
 
 sund2b(d3_nest(df_tree_sunburst,value_cols = "intensity"),
        valueField = "intensity",
@@ -256,7 +274,7 @@ count_species <- taxon_summary$taxon_summary_widetable_list$species
 if(ncol(count_species) >2){
   plot_HCA(count_species, meta_table = meta_table[,-1])
 }else{
-  print("There are not enough samples to do clustering.")
+  cat("Reminder: There are not enough samples. No point for smaple clustering.")
 }
 ```
 
@@ -385,31 +403,39 @@ datatable(alpha_diversity_table, extensions = 'Buttons',
 ```{r beta-diversity calculation}
 
 count_species <- taxon_summary$taxon_summary_widetable_list$species
-beta_diversity <- plot_beta_diversity(count_species =count_species, meta_table = meta_table)
+
+if(ncol(count_species) >2){
+  beta_diversity <- plot_beta_diversity(count_species =count_species, meta_table = meta_table)
+}else{
+  cat("Reminder: There are not enough samples for Beta diverstiy.")
+}
+
+
 
 ```
 
 ```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=8}
-
-for(plot in names(beta_diversity$plot_list)){
-  cat(paste0("## ", plot,  "\n"))
-  p = beta_diversity$plot_list[[plot]]
-  print(htmltools::tagList(ggplotly(p)))
-  cat("\n\n")
+if(ncol(count_species) >2){
+  for(plot in names(beta_diversity$plot_list)){
+    cat(paste0("## ", plot,  "\n"))
+    p = beta_diversity$plot_list[[plot]]
+    print(htmltools::tagList(ggplotly(p)))
+    cat("\n\n")
+  }
 }
-
 ```
 
 ## Result table for download
 
 ```{r beta_data, echo=FALSE,fig.width= 8,fig.height=4, cache = FALSE}
+if(ncol(count_species) >2){
 datatable(beta_diversity$PCoA.bray, extensions = 'Buttons',
             options = list(dom = 'Blfrtip',
                            scrollX = TRUE,
                            buttons = c('copy', 'csv', 'excel'),
                            pageLength = 10))
 
-
+}
 ```
 
 

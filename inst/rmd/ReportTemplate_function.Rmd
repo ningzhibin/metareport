@@ -19,6 +19,7 @@ output:
     toc: yes
     toc_depth: 4
 params:
+  template_version: "stable"
   data_table: !r NULL
   meta_table: !r NULL
   external_message: !r NULL
@@ -37,8 +38,18 @@ params:
 
 ```{r, changelog, echo=FALSE}
 
+
+version = "3.2" # template change version
 # todo
 # check the metafile, if meta is not qualified, skip it
+
+
+# 20220527 major update 
+  # a new parameter, 
+  # template version display
+  # bug fix for the development version path 
+  # a bug fix for the voronioTreemap title
+
 
 # Change log:
 # 20220207 adapted to HGM function format
@@ -172,6 +183,13 @@ if( is.null(meta_table)){
 
 
 ```{r error, results='asis'}
+cat(paste0("Template version: ",template_version, " ", version))
+if (template_version == "stable"){
+  path = paste0(find.package("metareport"),"/rmd")
+}else if(template_version == "develop"){
+  path = getwd()
+}
+
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
   cat("# Something went wrong\n")
@@ -226,7 +244,7 @@ Protein groups with CAZy annotation:  | `r paste(nrow(data_table[data_table$CAZy
 ```{r COG_voronoi, echo=FALSE,fig.width= 10, fig.height=5}
 
 # data.frame with 2 columns,  1st as COG or NOG category and weight column (intensity quantity)
-plot_COG_voronoi <- function(df){
+plot_COG_voronoi <- function(df, title  = "Category"){
   # for consistency, use predefined colors
   color_code <- data.frame(cat = LETTERS, color =  generate_colors(26))
   #df_COG_category <- COG_categry()
@@ -241,7 +259,7 @@ plot_COG_voronoi <- function(df){
                 #codes = color_code$color[match(df[,1], color_code$cat)])
   
   df_formated_jason <- vt_export_json(vt_input_from_df(df_formated, scaleToPerc = TRUE))
-  vt_d3(df_formated_jason, legend=TRUE, legend_title = "NOG categories", size_border_hover = "5px", size_border = "2px", color_border = "#ffffff", seed=200)
+  vt_d3(df_formated_jason, legend=TRUE, legend_title = title, size_border_hover = "5px", size_border = "2px", color_border = "#ffffff", seed=200)
 }
 
 
@@ -253,9 +271,10 @@ data_table_COG <- cbind(COG.category = data_table$COG.category, intensity_column
   
 
 data_table_COG_sum <- data.frame( h2 = data_table_COG[, 1],
-                       weight = rowSums(data_table_COG[,2:ncol(data_table_COG)]))
+                       weight = rowSums(data_table_COG[,2:ncol(data_table_COG),drop = FALSE]))
 
-plot_COG_voronoi(data_table_COG_sum)
+data_table_COG_sum <- data_table_COG_sum[data_table_COG_sum$weight != 0,] # if there is any 0, the whole plot will be black
+plot_COG_voronoi(data_table_COG_sum, title = "COG")
 
 
 ```
@@ -270,11 +289,11 @@ data_table_NOG <- cbind(NOG.category = data_table$NOG.category, intensity_column
                   aggregate(.~ NOG.category, data = ., FUN = sum)
 
 data_table_NOG_sum <- data.frame( h2 = data_table_NOG[, 1],
-                       weight = rowSums(data_table_NOG[,2:ncol(data_table_NOG)]))
+                       weight = rowSums(data_table_NOG[,2:ncol(data_table_NOG),drop = FALSE]))
 
 data_table_NOG_sum <- data_table_NOG_sum[data_table_NOG_sum$weight != 0,] # if there is any 0, the whole plot will be black
 
-plot_COG_voronoi(data_table_NOG_sum)
+plot_COG_voronoi(data_table_NOG_sum,title = "NOG")
 
 
 
@@ -370,7 +389,8 @@ df_intensity <- data_table_COG_acc
 
 
 if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_heatmap.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
 }else{
   cat("There is only one column/experiment, no heatmap needed!")
@@ -379,14 +399,16 @@ if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has mo
 
 if(length(experiment_names) > 3){
   
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
   
   # for extra plot with grouping information
   if(!is.null(meta_table)){
     for(i in 2: ncol(meta_table)){ 
        section_title <- paste0("PCA with Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA_grouping.Rmd"), quiet = TRUE)
        cat(res, sep = '\n')
    }
   }
@@ -408,7 +430,8 @@ data_table_NOG_acc<- data.frame(NOG.accession = data_table$NOG.accession, data_t
 df_intensity <- data_table_NOG_acc
 
 if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_heatmap.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
 }else{
   cat("There is only one column/experiment, no heatmap needed!")
@@ -416,14 +439,16 @@ if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has mo
 
 if(length(experiment_names) > 3){
   
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
   
   # for extra plot with grouping information
   if(!is.null(meta_table)){
     for(i in 2: ncol(meta_table)){ 
        section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA_grouping.Rmd"), quiet = TRUE)
        cat(res, sep = '\n')
    }
   }
@@ -441,28 +466,37 @@ if(length(experiment_names) > 3){
 
 ```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=6}
 
-plot_list <- report_plot_upsetR(df_intensity = data_table_COG_acc, meta_table = meta_table)
+if(ncol(data_table_COG_acc) > 1){ 
+  plot_list <- report_plot_upsetR(df_intensity = data_table_COG_acc, meta_table = meta_table)
 
-for(plot in names(plot_list)){
-  cat(paste0("### ", plot,  "\n"))
-  #print(htmltools::tagList(plot_list[[plot]]))
-  print(plot_list[[plot]])
-  cat("\n\n")
+  for(plot in names(plot_list)){
+    cat(paste0("### ", plot,  "\n"))
+    #print(htmltools::tagList(plot_list[[plot]]))
+    print(plot_list[[plot]])
+    cat("\n\n")
+  }
+}else{
+  cat("There is only one column/experiment, no comparison!")
 }
+
+
 
 ```
 
 ## NOGs {.tabset .tabset-fade }
 ```{r echo=FALSE, results='asis',error=TRUE, eval= TRUE, fig.width= 10, fig.height=6}
+if(ncol(data_table_NOG_acc) > 1){ 
+  plot_list <- report_plot_upsetR(df_intensity = data_table_NOG_acc, meta_table = meta_table)
+  
+  for(plot in names(plot_list)){
+    cat(paste0("### ", plot,  "\n"))
+    #print(htmltools::tagList(plot_list[[plot]]))
+    print(plot_list[[plot]])
+    cat("\n\n")
+  }
 
-plot_list <- report_plot_upsetR(df_intensity = data_table_NOG_acc, meta_table = meta_table)
-
-for(plot in names(plot_list)){
-  cat(paste0("### ", plot,  "\n"))
-  #print(htmltools::tagList(plot_list[[plot]]))
-  print(plot_list[[plot]])
-  cat("\n\n")
+}else{
+  cat("There is only one column/experiment, no comparison!")
 }
-
 ```
 

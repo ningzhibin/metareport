@@ -13,6 +13,7 @@ output:
       smooth_scroll: TRUE
     number_sections: true
 params:  
+  template_version: "stable"
   data_table: !r NULL ### Manditory; main data input for the report
   meta_table: !r NULL ### Optional; If provided, will do some statistics
   external_message: !r NULL
@@ -28,6 +29,14 @@ params:
 </style>
 
 ```{r, echo=FALSE}
+
+version = "2.3" # template change version
+
+# 20220527 major update 
+  # a new parameter, 
+  # template version display
+  # bug fix for the development version path 
+
 # change log
 # 20220203 change the input  parameter from input_datable to data_table, to be unified as the one function
 
@@ -55,8 +64,17 @@ library(rmetalab)
 library(gplots)
 library(rhandsontable)
 
+
 ```
+
 ```{r errorMEssage, results='asis'}
+cat(paste0("Template version: ",template_version, " ", version))
+if (template_version == "stable"){
+  path = paste0(find.package("metareport"),"/rmd")
+}else if(template_version == "develop"){
+  path = getwd()
+}
+
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
   cat("# Something went wrong\n")
@@ -131,7 +149,7 @@ if( is.null(meta_table)){
 
 
 ```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
-res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_protein_profile.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_protein_profile.Rmd"),quiet = TRUE) # envir = environment(), 
 cat(res, sep = '\n')
 
 ```
@@ -142,7 +160,7 @@ cat(res, sep = '\n')
 
 ```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
 if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_heatmap.Rmd"),quiet = TRUE) 
   cat(res, sep = '\n')
 }else{
   cat("There is only one column/experiment, no heatmap needed!")
@@ -164,14 +182,14 @@ if(length(data_table_tidied$experiment ) > 3){
     cat("* No Q100 items, using top100 with intensity+1 for analyis")
   }
   
-  res <- knitr::knit_child('ReportTemplate_child_PCA.Rmd', quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA.Rmd"),quiet = TRUE) 
   cat(res, sep = '\n')
   
   # for extra plot with grouping information
   if(!is.null(meta_table)){
     for(i in 2: ncol(meta_table)){ 
        section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA_grouping.Rmd"),quiet = TRUE) 
        cat(res, sep = '\n')
    }
   }
@@ -206,7 +224,7 @@ if(length(data_table_tidied$experiment ) > 3){
        if(length(unique(meta_table[,i])) >=2  && all(table(meta_table[,i]) >=2)){
          # will do ANOVA analysis block while: 
          # 1: more than (including) 3 groups, 2: each group has replicates.
-            res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_protein_DA.Rmd", package = "metareport"), quiet = TRUE)
+            res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_protein_DA.Rmd"),quiet = TRUE)
             cat(res, sep = '\n')
        }
    }

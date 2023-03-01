@@ -26,6 +26,7 @@ output:
     df_print: kable
     smart: TRUE
 params:  
+  template_version: "stable"
   data_table: !r NULL ### Manditory; main data input for the report
   meta_table: !r NULL ### Optional; If provided, will do some statistics
   external_message: !r NULL
@@ -41,13 +42,21 @@ params:
 </style>
 
 
-```{r changelog, echo=FALSE, eval= FALSE}
-# change log: 
-## 20220214 wrap up the first mature version
+```{r, changelog, echo=FALSE}
+
+version = "2.3" # template change version
+
+# 20220527 major update 
+  # a new parameter, 
+  # template version display
+  # bug fix for the development version path 
 
 ```
 
+
 ```{r,setup, echo=FALSE, warning = FALSE, message = FALSE}
+
+
 htmltools::img(src = system.file("rmd/iMetaReport.png", package = "metareport"),
                alt = 'logo', 
                style = 'position:absolute; top:0; right:0; padding:10px;width:100px;height:100px;')
@@ -61,10 +70,19 @@ library(rmetalab)
 library(gplots)
 library(rhandsontable)
 
+
 ```
 
 
 ```{r errorMEssage, results='asis'}
+cat(paste0("Template version: ",template_version, " ", version))
+
+if (template_version == "stable"){
+  path = paste0(find.package("metareport"),"/rmd")
+}else if(template_version == "develop"){
+  path = getwd()
+}
+
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
   cat("# Something went wrong\n")
@@ -72,6 +90,9 @@ if(!is.null(params$external_message)){
   cat(" **Please doublecheck the input file or the server status according to the message below** \n")
   cat(params$external_message)
 } 
+
+
+
 
 ```
 
@@ -145,9 +166,7 @@ if( is.null(meta_table)){
 
 ```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
 
-
-
-res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_peptide_profile.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_peptide_profile.Rmd"), quiet = TRUE)
 cat(res, sep = '\n')
 
 ```
@@ -158,8 +177,10 @@ cat(res, sep = '\n')
 
 
 if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has more than 1 columns 
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_heatmap.Rmd", package = "metareport"),quiet = TRUE) # envir = environment(), 
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_heatmap.Rmd"),quiet = TRUE) # envir = environment(), 
+  
   cat(res, sep = '\n')
+  
 }else{
   cat("There is only one column/experiment, no heatmap needed!")
 }
@@ -167,24 +188,25 @@ if(ncol(df_intensity) > 1){ # heatamap, only if the quantification matrix has mo
 ```
 
 
-# PCA Analysis {.tabset .tabset-fade }
-
 ```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
 
 if(ncol(df_intensity) > 3){
+  
+  cat("# Principle Component Analysis {.tabset .tabset-fade } \n")
   
   if(nrow(data_table_tidied$intensity_matrix_Q100) ==0){
     cat("* No Q100 items, using top100 with intensity+1 for analyis")
   }
   
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA.Rmd", package = "metareport"), quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
   
   # for extra plot with grouping information
   if(!is.null(meta_table)){
     for(i in 2: ncol(meta_table)){ 
        section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") )
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_PCA_grouping.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_PCA_grouping.Rmd"), quiet = TRUE)
+       
        cat(res, sep = '\n')
    }
   }
@@ -219,7 +241,8 @@ if(ncol(df_intensity) > 3){
        if(length(unique(meta_table[,i])) >=2  && all(table(meta_table[,i]) >=2)){
          # will do ANOVA analysis block while: 
          # 1: more than (including) 3 groups, 2: each group has more than (including) 2 samples.
-            res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_peptides_DA.Rmd", package = "metareport"), quiet = TRUE)
+            #res <- knitr::knit_child(system.file("rmd/ReportTemplate_child_peptides_DA.Rmd", package = "metareport"), quiet = TRUE)
+            res <- knitr::knit_child(paste0(path,"/ReportTemplate_child_peptides_DA.Rmd"), quiet = TRUE)
             cat(res, sep = '\n')
        }
    }

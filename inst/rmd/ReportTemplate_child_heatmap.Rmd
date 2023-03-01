@@ -21,7 +21,6 @@ if (nrow(df_intensity_Q100) > 100){
 * There are `r nrow(df_intensity)` features.
 * With `r nrow(df_intensity_Q100)` 100% presence across experiments (Q100).
 
-
 ## Interactive heatmap
 
 <details>
@@ -39,7 +38,14 @@ if (nrow(df_intensity_Q100) > 100){
 
 ```{r echo=FALSE, fig.width= 8, fig.height=6, error=TRUE}
 
-quickpheatmap(df_intensity_for_interactive_plot, scale = "row", column_meta = meta_table, interactive  = TRUE )
+if(ncol(df_intensity_for_interactive_plot)>3){
+  scale = "row"
+}else{
+  scale = "none"
+}
+
+quickpheatmap(df_intensity_for_interactive_plot, scale = "none", column_meta = meta_table, interactive  = TRUE )
+
 
 ```
 
@@ -62,11 +68,11 @@ quickpheatmap(df_intensity_for_interactive_plot, scale = "row", column_meta = me
 df_intensity_Q50 <- df_intensity[which(rowSums(df_intensity > 0) >= ncol(df_intensity)*0.5) , , drop = FALSE]
 # # plot a heatmap of Q100
 if(nrow(df_intensity_Q100) == 0 && nrow(df_intensity_Q50) > 0){
-  quickpheatmap(df_intensity_Q50, scale = "row", column_meta = meta_table )
+  quickpheatmap(df_intensity_Q50, scale = scale, column_meta = meta_table )
 }else if( nrow(df_intensity_Q50) == 0){
   cat("Too many missing values, even 0 for Q50 , check the interactive plot of the top 100 features ")
 }else{
-  quickpheatmap(df_intensity_Q100, scale = "row", column_meta = meta_table )
+  quickpheatmap(df_intensity_Q100, scale = scale, column_meta = meta_table )
 }
 
 ```

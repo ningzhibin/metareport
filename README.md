@@ -1,12 +1,15 @@
+@ updated @ 20230301
+
+
 # metareport
 
- The only function/purpose of this package is automatic report generation from Metalab results.
+ The function/purpose of this package is automatic report generation from Metalab results.
  
  The main function metareport provides an interface to take data table (and meta_table as optional)in and render rmd template into report. 
  
- This package is designed for opencpu usage, but still can run as standalone version see examples below
+ This package is initially designed for opencpu usage, but also can run as standalone version to support local run
  
- This package is now under active development for Metalab HGM version only. 
+ This package is under active development for Metalab MAG version, then to support general version. 
  
 
 # Install and run
@@ -14,13 +17,18 @@
 
 metareport heavily relies on rmetalab
 
+install from github (note that github might not be updated timely)
+
 ```
 devtools::install_github("northomics/rmetalab") 
 devtools::install_github("northomics/metareport")
 
+library(rmetalab)
+library(metareport)
+
 ```
 
-After everything installed, you should be able to run the followings. 
+After successful installation, you should be able to run the following commands:
 Check the working directory for the reports just generated.
 
 
@@ -66,13 +74,12 @@ metareport(type = "function",
 
 ```
 
-
-
-There is only one function {metareport} to include all options.
+There is only one function {metareport} to include all options/types.
 The main input files are data_table (summary, peptide, protein, taxon or function)
-There are internal rmarkdown template files in \inst\rmd by default. Users can also specify their own templates by url
+Internal rmarkdown template files in \inst\rmd by default. Users can also specify their own templates by url
+For more options, check ?metareport
 
-# Setup opencpu server
+# For opencpu server usage
 
 In order to use this function from openCPU server, users need to have an opencpu server setup first (check the [opencpu website](https://www.opencpu.org/download.html) for the installation). 
 
@@ -86,12 +93,33 @@ Once you know the principle how to upload (post) your data table, and download t
 
 
 
+#Change log
 
-# change log
+
+V 0.4 20230301
+  * when using rio:import, there might be some warnings because of the inconsistent numbers of columns
+  * very common problem seen in fread: https://stackoverflow.com/questions/64840482/r-data-table-problem-when-read-file-with-inconsistent-column
+  * rio:import was chosen for because at the beginning the format of the input files are not always tsv, some are csv, rio:import uses fread, which has some intrinsic problems when dealing with large files, files with inconsistent number of column, or files with cells with long content
+  * read.delim does not have that problem. 
+  * Therefore, it
+
+v 0.3 20220527 
+  * bug fix for develop version, with the path correction, otherwise, the main document does not use the child document
+  * add a parameter to check if to use the develop version
+  * update: PCA analysis title with pre-check to show or not
+  * add feature to show template version of each template
+  
 
 
+V 0.2.6 20220426 
+  * bug fix: taxon and function compatible with single raw file report: more friendly reminders, and drop = FALSE
+  * add annotation on the peptide profile section, about the sparsity
+
+v 0.2.5 20220419 bug fix
+
+ * function module, for voronoi plots, COG categories with 0 needs to be removed, otherwise the whole plot is going to be black, and the following figures will not show
 v 0.2.4 20220413 bug fix, 
-  * function module, for voronoi plots, categories with 0 needs to be removed, otherwise the whole plot is going to be black, and the following figures will not show
+  * function module, for voronoi plots, eggNOG categories with 0 needs to be removed, otherwise the whole plot is going to be black, and the following figures will not show
   * input parameter type: external_message: !r NULL (was ! NULL)
   * proteingroup module, wrong output of number of proteins, and deleted the item for reversed and contaminant. 
 
@@ -121,4 +149,12 @@ V 0.0.6 add support for pdf format report generation (for some slow computers, o
   rhandsontable
   
   
+# Todo list:
+
+add Haonan's function (lined bar)
+add stream function
+add voronoi treemap for compositional analysis, especially for taxa (species level)
+
+
+
 

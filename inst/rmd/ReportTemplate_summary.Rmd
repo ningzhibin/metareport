@@ -26,6 +26,7 @@ output:
     df_print: kable
     smart: TRUE
 params:  
+  template_version: "stable"
   data_table: !r NULL ### Manditory, main data input for the report
   meta_table: !r NULL ### Optional, If provided, will do grouping based statistics
   external_message: !r NULL
@@ -42,6 +43,14 @@ params:
 
 
 ```{r, changelog, echo=FALSE}
+
+version = "1.2" # template change version
+
+# 20220527 major update 
+  # a new parmeter, 
+  # template version display
+  # bug fix for the development version path 
+
 # 20220211 revised the versioin for metareport package
 
   # main input is a identifcation summary txt file
@@ -84,11 +93,20 @@ library(plotly)
 library(DT)
 library(rmetalab) # wrapped functions in metalab # install 
 
+
+
 ```
 
 
 
 ```{r errorMessage, results='asis'}
+cat(paste0("Template version: ",template_version, " ", version))
+if (template_version == "stable"){
+  path = paste0(find.package("metareport"),"/rmd")
+}else if(template_version == "develop"){
+  path = getwd()
+}
+
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
   cat("# Something went wrong\n")
@@ -200,14 +218,16 @@ if(!is.null(meta_table)){
       #section_title <-   paste0(unique(meta_table[,i]), collapse="; ")   
        section_title<- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") ) 
        no_grouping <- "FALSE"
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       #res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_summary_child_QC.Rmd"), quiet = TRUE)
        cat(res, sep = '\n')
    }
 }else{
   
   section_title <- ""
   no_grouping <- TRUE
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_summary_child_QC.Rmd"), quiet = TRUE)
   cat(res, sep = '\n')
 
 }
@@ -231,7 +251,8 @@ if(!is.null(meta_table)){
   for(i in 3: ncol(meta_table)){ # i is the column index
        section_title <- paste0("Grouping: " , paste0(unique(meta_table[,i]), collapse="; ") ) 
        no_grouping <- "FALSE"
-       res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       #res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), quiet = TRUE)
+       res <- knitr::knit_child(paste0(path,"/ReportTemplate_summary_child_QC.Rmd"), quiet = TRUE)
        cat(res, sep = '\n')
    }
 }else{
@@ -239,7 +260,9 @@ if(!is.null(meta_table)){
   section_title <- ""
   no_grouping <- TRUE
   
-  res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  #res <- knitr::knit_child(system.file("rmd/ReportTemplate_summary_child_QC.Rmd", package = "metareport"), envir = environment(), quiet = TRUE)
+  res <- knitr::knit_child(paste0(path,"/ReportTemplate_summary_child_QC.Rmd"), quiet = TRUE)
+  
   cat(res, sep = '\n')
   
 }

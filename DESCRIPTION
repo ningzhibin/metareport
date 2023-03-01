@@ -1,14 +1,13 @@
 Package: metareport
 Type: Package
 Title: Metalab result report 
-Version: 0.2.4
+Version: 0.4
 Authors@R: 
     person(given = "Zhibin",
            family = "Ning",
            role = c("aut", "cre"),
            email = "ningzhibin@gmail.com")
-Maintainer: Zhibin Ning <ningzhibin@gmail.com>, 
-            Leyuan Li <lileyuan2016@gmail.com>
+Maintainer: Zhibin Ning <ningzhibin@gmail.com> 
 Description: A wrapper function of rmarkdown::render for metalab report generation
 License: GNU
 Encoding: UTF-8
