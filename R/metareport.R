@@ -76,7 +76,8 @@ metareport <- function(type = "summary", # mandatory
   # read in data table, no need to continue if there there is error 
   # if there is detrimental warnings, stop reading in the whole table, no point to continue, cause it will not render a full report
   withCallingHandlers(#data_table <- rio::import(data_file, header = TRUE, check.names = TRUE),
-                      data_table <- read.delim(data_file,header = TRUE, check.names = TRUE, sep = "\t"),
+                      #data_table <- read.delim(data_file,header = TRUE, check.names = TRUE, sep = "\t"),
+                      data_table <- as.data.frame(readr::read_tsv(data_file,name_repair =make.names)),
                       
                       warning = function(w){ print("warning triggered!");
                         warning_message <<- c(warning_message,"\n","There is warning messages while reading in the function data file, 
