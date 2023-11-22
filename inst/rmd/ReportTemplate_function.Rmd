@@ -39,10 +39,18 @@ params:
 ```{r, changelog, echo=FALSE}
 
 
-version = "3.2" # template change version
+version = "3.3" # template change version
 # todo
 # check the metafile, if meta is not qualified, skip it
 
+
+# Change log:
+# 20231122 a small fix, a terrifying error message was removed. The message was generated when parsing the function.tsv. just a waning, not affecting the result.
+# 20231114 bug fix, when setup a new data.frame,data.frame() will check the columnames, with check.names = TRUE, this will correct the columnanes starting with numbers, to add an X. 
+# see here https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/data.frame
+# and here https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/make.names
+# for more information
+# A good habit is trying not using any names starting with numbers, or with pure numbers. 
 
 # 20220527 major update 
   # a new parameter, 
@@ -50,8 +58,6 @@ version = "3.2" # template change version
   # bug fix for the development version path 
   # a bug fix for the voronioTreemap title
 
-
-# Change log:
 # 20220207 adapted to HGM function format
 # 20220205 external message delved to the report
 # 20210805 Added upset plot for every meta information
@@ -192,9 +198,9 @@ if (template_version == "stable"){
 
 # use this as a template for conditional multi-line in-line code
 if(!is.null(params$external_message)){
-  cat("# Something went wrong\n")
-  cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table** \n")
-  cat(" **Please doublecheck the input file or the server status according to the message below** \n")
+  # cat("# Something went wrong.\n\n")
+  # cat(" **In most cases when you see this message, the report is either not complete or based on incomplete importation of the data table.** \n\n")
+  # cat(" **Please doublecheck the input file or the server status according to the message below** \n\n")
   cat(params$external_message)
 } 
 
@@ -380,7 +386,7 @@ ggplotly(ggplot(data_table_NOG_melt, aes(x = Sample, y = Intensity, fill = NOG.c
 
 # df_intensity <- data_table_COG %>% column_to_rownames(var = "COG.category")
 
-data_table_COG_acc<- data.frame(COG.accession = data_table$COG.accession, data_table[,experiment$experiment_index]) %>% 
+data_table_COG_acc<- data.frame(COG.accession = data_table$COG.accession, data_table[,experiment$experiment_index],check.names = FALSE) %>% 
    aggregate(.~ COG.accession, data = ., FUN = sum) %>% 
   column_to_rownames(var = "COG.accession")
 
@@ -423,7 +429,7 @@ if(length(experiment_names) > 3){
 ```{r, echo=FALSE, results='asis', error=TRUE, eval= TRUE}
 
 #df_intensity <- data_table_NOG %>% column_to_rownames(var = "NOG.category")
-data_table_NOG_acc<- data.frame(NOG.accession = data_table$NOG.accession, data_table[,experiment$experiment_index]) %>% 
+data_table_NOG_acc<- data.frame(NOG.accession = data_table$NOG.accession, data_table[,experiment$experiment_index],check.names = FALSE) %>% 
    aggregate(.~ NOG.accession, data = ., FUN = sum) %>% 
   column_to_rownames(var = "NOG.accession")
 

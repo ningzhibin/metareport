@@ -3,7 +3,7 @@
 <!-- input optional: meta_data -->
 
 ```{r echo=FALSE, error=TRUE, results='asis'}
-df_intensity_Q100 <- df_intensity[which(rowSums(df_intensity > 0) == ncol(df_intensity)) , , drop = FALSE] # the Q100 features/rows intensity matrix
+df_intensity_Q100 <- as.data.frame( df_intensity[which(rowSums(df_intensity > 0) == ncol(df_intensity)) , , drop = FALSE]) # the Q100 features/rows intensity matrix
 
 # only use top 100 for
 if (nrow(df_intensity_Q100) > 100){

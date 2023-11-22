@@ -95,13 +95,25 @@ Once you know the principle how to upload (post) your data table, and download t
 
 #Change log
 
+V 0.43 20231122 a small fix on function report, a terrifying error message was removed. The message was generated when parsing the function.tsv. just a waning, not affecting the result.
 
-V 0.4 20230301
+V 0.42 20231114
+ *  20231114 bug fix, when setup a new data.frame,data.frame() will check the columnames, with check.names = TRUE, this will correct the columnanes starting with numbers, to add an X. 
+* see here https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/data.frame
+* and here https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/make.names
+* for more information
+* A good habit is trying not using any names starting with numbers, or with pure numbers. 
+
+
+V 0.41 20231005 
   * when using rio:import, there might be some warnings because of the inconsistent numbers of columns
   * very common problem seen in fread: https://stackoverflow.com/questions/64840482/r-data-table-problem-when-read-file-with-inconsistent-column
   * rio:import was chosen for because at the beginning the format of the input files are not always tsv, some are csv, rio:import uses fread, which has some intrinsic problems when dealing with large files, files with inconsistent number of column, or files with cells with long content
-  * read.delim does not have that problem. 
-  * Therefore, it
+  * read.delim has some simlilar problemes. it turns out that the read_tsv from tidyverse is the best option
+  * Therefore, in the main function of metareport, assuming al files are based tsv files, the import function is changed to read_tsv, 
+  with the option of name repair name_repair =make.names
+  * However, the read_tsv usually guess the column type wrongly, e.g. intenisty columns into characters, therefore, need to convert them into numeric manually 
+  * a small bug fixed in RepotTemplate_child_heatmap.rmd, convert a matrix to data.frame, for slicing
 
 v 0.3 20220527 
   * bug fix for develop version, with the path correction, otherwise, the main document does not use the child document

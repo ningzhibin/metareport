@@ -1,7 +1,7 @@
 Package: metareport
 Type: Package
 Title: Metalab result report 
-Version: 0.4
+Version: 0.42
 Authors@R: 
     person(given = "Zhibin",
            family = "Ning",
